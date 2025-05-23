@@ -1,28 +1,18 @@
 "use client"
 
-import { Calendar, Rocket, ChevronUp, Home, Inbox, User2 } from "lucide-react"
+import { Calendar, Home, Inbox } from "lucide-react"
 import Link from "next/link"
 
 import {
   Sidebar,
   SidebarContent,
-  SidebarFooter,
   SidebarGroup,
   SidebarGroupContent,
   SidebarGroupLabel,
-  SidebarHeader,
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
 } from "@/components/ui/sidebar"
-
-import {
-  DropdownMenu,
-  DropdownMenuTrigger,
-  DropdownMenuContent,
-  DropdownMenuItem,
-} from "@radix-ui/react-dropdown-menu"
-import { Avatar, AvatarFallback, AvatarImage } from "@radix-ui/react-avatar"
 
 // Menu items.
 const items = [
