@@ -4,6 +4,7 @@ import Link from "next/link"
 import { useForm } from "react-hook-form"
 import { zodResolver } from "@hookform/resolvers/zod"
 import { useRouter } from "next/navigation"
+import { useEffect } from "react"
 import { loginSchema, type LoginSchema } from "schemas/auth.schemas"
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -17,26 +18,41 @@ import {
   CardTitle,
 } from "@/components/ui/card"
 import { AlertCircle, Loader2 } from "lucide-react"
+import { useAuth, useAuthActions } from "@/store/auth-store"
 
 export default function LoginPage() {
   const router = useRouter()
 
+  const { isLoading, isAuthenticated } = useAuth()
+  const { login, clearError } = useAuthActions()
+
   const {
     register,
     handleSubmit,
-    formState: { errors, isSubmitting },
+    formState: { errors },
   } = useForm<LoginSchema>({
     resolver: zodResolver(loginSchema),
   })
 
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      router.push("/dashboard")
+    }
+  }, [isAuthenticated, router])
+
+  // Clear auth errors when component mounts
+  useEffect(() => {
+    clearError()
+  }, [clearError])
+
   const onSubmit = async (data: LoginSchema) => {
     try {
-      console.log(data);
-      // simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      router.push("/dashboard")
+      await login(data)
+      // Success toast will be shown in the useEffect above when isAuthenticated becomes true
     } catch (err) {
-      console.error(err)
+      // Error toast will be already handled by the auth store callback
+      console.error("Login failed:", err)
     }
   }
 
@@ -61,7 +77,13 @@ export default function LoginPage() {
                   </div>
                 )}
               </div>
-              <Input id="email" type="email" {...register("email")} placeholder="Enter your email" />
+              <Input 
+                id="email" 
+                type="email" 
+                {...register("email")} 
+                placeholder="Enter your email"
+                disabled={isLoading}
+              />
             </div>
 
             <div className="space-y-1.5">
@@ -74,16 +96,28 @@ export default function LoginPage() {
                   </div>
                 )}
               </div>
-              <Input id="password" type="password" {...register("password")} placeholder="Enter your password" />
+              <Input 
+                id="password" 
+                type="password" 
+                {...register("password")} 
+                placeholder="Enter your password"
+                disabled={isLoading}
+              />
             </div>
           </CardContent>
 
           <CardFooter className="flex flex-col space-y-4">
-            <Button type="submit" className="w-full" disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="w-4 h-4 animate-spin" /> : "Sign in"}
+            <Button type="submit" className="w-full" disabled={isLoading}>
+              {isLoading ? (
+                <>
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                </>
+              ) : (
+                "Sign in"
+              )}
             </Button>
             <div className="text-center text-sm">
-              Don’t have an account?{" "}
+              Don&rsquo;t have an account?{" "}
               <Link href="/register" className="text-primary underline-offset-4 hover:underline">
                 Create one
               </Link>

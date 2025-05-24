@@ -1,6 +1,7 @@
 "use client"
 
 import Image from "next/image"
+import { useRouter } from "next/navigation"
 import { SidebarTrigger } from "./ui/sidebar"
 import { Bell, LogOut, Settings, User } from "lucide-react"
 import {
@@ -11,8 +12,18 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
+import { useAuthActions } from "@/store/auth-store"
 
 export default function Navbar() {
+  const router = useRouter()
+  
+  const { logout } = useAuthActions()
+
+  const handleLogout = async () => {
+    await logout();
+    router.push("/login");
+  }
+
   return (
     <header className="h-14 w-full border-b bg-white px-4 flex items-center justify-between">
       {/* Left: Sidebar Trigger + Logo */}
@@ -52,7 +63,10 @@ export default function Navbar() {
               Settings
             </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem className="text-red-600">
+            <DropdownMenuItem
+              className="text-red-600 cursor-pointer"
+              onClick={handleLogout}
+            >
               <LogOut className="w-4 h-4 mr-2" />
               Logout
             </DropdownMenuItem>

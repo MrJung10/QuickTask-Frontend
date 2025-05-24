@@ -18,10 +18,13 @@ import { useRouter } from "next/navigation"
 import { registerSchema, type RegisterSchema } from "schemas/auth.schemas"
 import { AlertCircle } from "lucide-react"
 import { Loader2 } from "lucide-react";
+import { useAuthActions } from "@/store/auth-store"
 
 
 export default function RegisterPage() {
   const router = useRouter();
+
+  const { register: registerUser } = useAuthActions()
 
   const {
     register,
@@ -35,7 +38,7 @@ export default function RegisterPage() {
     try {
       console.log(data)
       // simulate API call
-      await new Promise((resolve) => setTimeout(resolve, 1000))
+      await registerUser(data);
       router.push("/login")
     } catch (err) {
       console.error(err)
