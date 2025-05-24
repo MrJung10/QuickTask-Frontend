@@ -3,7 +3,7 @@ import { persist } from 'zustand/middleware';
 import { User, LoginPayload, RegisterPayload } from '@/types/auth.types';
 import { AuthRepository } from '@/repositories/auth.repository';
 import { clearAuthCookies, setAuthCookies } from '@/lib/utils/cookies';
-
+import Cookies from "js-cookie";
 interface AuthState {
   // State
   user: User | null;
@@ -14,6 +14,7 @@ interface AuthState {
   error: string | null;
 
   // Actions
+  initializeAuth: () => void;
   login: (payload: LoginPayload) => Promise<void>;
   register: (payload: RegisterPayload) => Promise<void>;
   logout: () => void;
@@ -34,6 +35,21 @@ export const useAuthStore = create<AuthState>()(
       isLoading: false,
       error: null,
 
+      initializeAuth: () => {
+        const accessToken = Cookies.get("accessToken");
+        const refreshToken = Cookies.get("refreshToken");
+        const user = Cookies.get("userDetails") ? JSON.parse(Cookies.get("userDetails")!) : null;
+    
+        if (accessToken && refreshToken && user) {
+          set({
+            accessToken,
+            refreshToken,
+            user,
+            isAuthenticated: true,
+          });
+        }
+      },
+
       // Login action
       login: async (payload: LoginPayload) => {
         set({ isLoading: true, error: null });
@@ -44,7 +60,7 @@ export const useAuthStore = create<AuthState>()(
             onSuccess: (response) => {
               const { accessToken, refreshToken, userDetails } = response.data;
 
-              setAuthCookies(accessToken, refreshToken);
+              setAuthCookies(accessToken, refreshToken, userDetails);
               
               set({
                 user: userDetails,
