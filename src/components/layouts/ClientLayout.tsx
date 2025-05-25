@@ -8,7 +8,7 @@ export default function ClientLayout({ children }: { children: React.ReactNode }
 
   useEffect(() => {
     initializeAuth(); // ✅ Load from cookies
-  }, []);
+  }, [initializeAuth]);
 
   return <>{children}</>;
 }

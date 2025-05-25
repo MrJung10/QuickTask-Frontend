@@ -24,3 +24,14 @@ export interface ProjectListResponse {
     message: string;
     data: Project[];
 }
+
+export interface CreateProjectDto {
+    name: string;
+    description: string;
+    startDate?: string;
+    deadline?: string;
+    members: {
+      userId: string;
+      role: 'ADMIN' | 'MEMBER';
+    }[];
+  }

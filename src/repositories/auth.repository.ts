@@ -1,7 +1,6 @@
 import { apiClient } from "@/lib/api/config";
 import { LoginPayload, LoginResponse, RegisterPayload, RegisterResponse } from "@/types/auth.types";
 import { AxiosError } from "axios";
-import Cookies from "js-cookie";
 
 class AuthRepo {
   async login({

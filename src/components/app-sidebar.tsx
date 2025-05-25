@@ -53,8 +53,6 @@ export function AppSidebar() {
   const { user } = useAuth();
   const { logout } = useAuthActions()
 
-  console.log('user==========>', user);
-
   const handleLogout = async () => {
     await logout();
     router.push("/login");

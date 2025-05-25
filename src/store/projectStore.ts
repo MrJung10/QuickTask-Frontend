@@ -1,5 +1,5 @@
 import { create } from "zustand"
-import { Project } from "@/types/project.types"
+import { Project, CreateProjectDto } from "@/types/project.types"
 import { ProjectRepository } from "@/repositories/project.repository"
 
 type ProjectStore = {
@@ -16,7 +16,7 @@ type ProjectStore = {
   setError: (message: string | null) => void
 }
 
-export const useProjectStore = create<ProjectStore>((set, get) => ({
+export const useProjectStore = create<ProjectStore>((set) => ({
   projects: [],
   loading: false,
   error: null,
@@ -36,7 +36,7 @@ export const useProjectStore = create<ProjectStore>((set, get) => ({
     })
   },
 
-  addProject: async (payload) => {
+  addProject: async (payload: CreateProjectDto) => {
     set({ loading: true })
     await ProjectRepository.createProject(
       payload,

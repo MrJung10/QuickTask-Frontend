@@ -6,6 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
 import { Input } from "@/components/ui/input"
+import { Checkbox } from "@/components/ui/checkbox"
 import { Avatar, AvatarFallback } from "@/components/ui/avatar"
 import {
   DropdownMenu,
@@ -16,9 +17,22 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { AlertCircle, CalendarDays, Loader2, MoreHorizontal, Plus, Search } from "lucide-react"
+import { AlertCircle, CalendarDays, Loader2, MoreHorizontal, Plus, Search, X } from "lucide-react"
 import { Project } from "@/types/project.types"
 import { useProjectStore } from "@/store/projectStore"
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog"
+import { Label } from "@radix-ui/react-label"
+import { Textarea } from "@/components/ui/textarea"
+import { useUserStore } from "@/store/userStore"
+import { Members } from "@/types/user.types"
 
 // Helper function to calculate project status based on dates and completion
 const calculateProjectStatus = (project: Project): string => {
@@ -53,60 +67,76 @@ const calculateProjectPriority = (project: Project): string => {
   }
 }
 
+interface CreateProjectFormProps {
+  onSubmit: (projectData: {
+    name: string;
+    description: string;
+    startDate: string;
+    deadline: string;
+    members: { userId: string; role: string }[];
+  }) => void;
+  teamMembers: Members[];
+}
+
 export default function ProjectsPage() {
-  const { projects, loading, error, fetchProjects, deleteProject } = useProjectStore();
+  const { projects, loading, error, fetchProjects, deleteProject, addProject } = useProjectStore();
+  const { members, fetchMembers } = useUserStore();
+
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
+  const [createError, setCreateError ] = useState<string | null>(null)
 
   useEffect(() => {
-    fetchProjects()
-  }, [fetchProjects])
+    fetchProjects();
+    fetchMembers();
+  }, [fetchProjects, fetchMembers])
 
   const filteredProjects = projects.filter((project) => {
-    const projectStatus = calculateProjectStatus(project)
-    const projectPriority = calculateProjectPriority(project)
+    const projectStatus = calculateProjectStatus(project);
+    const projectPriority = calculateProjectPriority(project);
 
     const matchesSearch =
       project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      project.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || projectStatus === statusFilter
-    const matchesPriority = priorityFilter === "all" || projectPriority === priorityFilter
+      project.description.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus = statusFilter === "all" || projectStatus === statusFilter;
+    const matchesPriority = priorityFilter === "all" || projectPriority === priorityFilter;
 
-    return matchesSearch && matchesStatus && matchesPriority
+    return matchesSearch && matchesStatus && matchesPriority;
   })
 
   const getStatusColor = (status: string) => {
     switch (status) {
       case "In Progress":
-        return "bg-blue-100 text-blue-800"
+        return "bg-blue-100 text-blue-800";
       case "Planning":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "Review":
-        return "bg-purple-100 text-purple-800"
+        return "bg-purple-100 text-purple-800";
       case "Done":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       case "Not Started":
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "Critical":
-        return "bg-red-100 text-red-800"
+        return "bg-red-100 text-red-800";
       case "High":
-        return "bg-orange-100 text-orange-800"
+        return "bg-orange-100 text-orange-800";
       case "Medium":
-        return "bg-yellow-100 text-yellow-800"
+        return "bg-yellow-100 text-yellow-800";
       case "Low":
-        return "bg-green-100 text-green-800"
+        return "bg-green-100 text-green-800";
       default:
-        return "bg-gray-100 text-gray-800"
+        return "bg-gray-100 text-gray-800";
     }
-  }
+  };
 
   const getProjectColor = (index: number): string => {
     const colors = [
@@ -118,8 +148,30 @@ export default function ProjectsPage() {
       "bg-red-500",
       "bg-pink-500",
       "bg-indigo-500",
-    ]
-    return colors[index % colors.length]
+    ];
+    return colors[index % colors.length];
+  }
+
+  const handleCreateProject = (projectData: {
+    name: string;
+    description: string;
+    startDate: string;
+    deadline: string;
+    members: { userId: string; role: string }[];
+  }) => {
+    try {
+      console.log('projectData', projectData);
+      addProject(projectData);
+      setIsCreateModalOpen(false);
+    } catch (error) {
+      console.error("Failed to create project:", error);
+    }
+
+
+
+    console.log("Creating project:", projectData)
+    // Here you would typically send the data to your API
+    
   }
 
   const handleDeleteProject = async (projectId: string) => {
@@ -137,11 +189,11 @@ export default function ProjectsPage() {
   }
 
   // Calculate statistics
-  const totalProjects = projects.length
-  const inProgressProjects = projects.filter(p => calculateProjectStatus(p) === "In Progress").length
-  const completedProjects = projects.filter(p => calculateProjectStatus(p) === "Completed").length
-  const overdueProjects = projects.filter(p => calculateProjectStatus(p) === "Overdue").length
-  const totalMembers = projects.reduce((sum, project) => sum + project.totalMembers, 0)
+  const totalProjects = projects.length;
+  const inProgressProjects = projects.filter(p => calculateProjectStatus(p) === "In Progress").length;
+  const completedProjects = projects.filter(p => calculateProjectStatus(p) === "Completed").length;
+  const overdueProjects = projects.filter(p => calculateProjectStatus(p) === "Overdue").length;
+  const totalMembers = projects.reduce((sum, project) => sum + project.totalMembers, 0);
 
   if (loading) {
     return (
@@ -166,17 +218,32 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-6">
+      {createError && (
+        <div className="flex items-center justify-center p-4 bg-red-100 text-red-800 rounded-md">
+          <AlertCircle className="h-5 w-5 mr-2" />
+          <span>{createError}</span>
+        </div>
+      )}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
           <p className="text-muted-foreground">Manage and track all your projects in one place.</p>
         </div>
-        <Button asChild>
-          <Link href="/projects/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Project
-          </Link>
-        </Button>
+        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+          <DialogTrigger asChild>
+            <Button>
+              <Plus className="mr-2 h-4 w-4" />
+              New Project
+            </Button>
+          </DialogTrigger>
+          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+            <DialogHeader>
+              <DialogTitle>Create New Project</DialogTitle>
+              <DialogDescription>Add a new project to your workspace with team members and roles.</DialogDescription>
+            </DialogHeader>
+            <CreateProjectForm onSubmit={handleCreateProject} teamMembers={members} />
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="flex items-center space-x-4">
@@ -230,14 +297,15 @@ export default function ProjectsPage() {
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Priority</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Team</th>
+                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Start Date</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Due Date</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Actions</th>
                 </tr>
               </thead>
               <tbody>
                 {filteredProjects.map((project, index) => {
-                  const status = calculateProjectStatus(project)
-                  const priority = calculateProjectPriority(project)
+                  const status = calculateProjectStatus(project);
+                  const priority = calculateProjectPriority(project);
                   
                   return (
                     <tr key={project.id} className="border-b transition-colors hover:bg-muted/50">
@@ -252,16 +320,18 @@ export default function ProjectsPage() {
                           </div>
                         </div>
                       </td>
+
                       <td className="p-4">
                         <Badge className={getStatusColor(status)}>{status}</Badge>
                       </td>
                       <td className="p-4">
                         <Badge className={getPriorityColor(priority)}>{priority}</Badge>
                       </td>
+
                       <td className="p-4">
                         <div className="flex items-center space-x-2">
                           <div className="flex -space-x-2">
-                            {project.members.slice(0, 3).map((member, memberIndex) => (
+                            {project.members.slice(0, 3).map((member) => (
                               <Avatar key={member.id} className="h-6 w-6 border-2 border-background">
                                 <AvatarFallback className="text-xs">{member.shortName}</AvatarFallback>
                               </Avatar>
@@ -275,12 +345,33 @@ export default function ProjectsPage() {
                           <span className="text-sm text-muted-foreground">{project.totalMembers} members</span>
                         </div>
                       </td>
+
                       <td className="p-4">
-                        <div className="flex items-center space-x-1">
-                          <CalendarDays className="h-3 w-3 text-muted-foreground" />
-                          <span className="text-sm text-muted-foreground">{formatDate(project.deadline)}</span>
-                        </div>
+                        {project.startDate ? (
+                          <div className="flex items-center space-x-1">
+                            <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">
+                              {formatDate(project.startDate)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">---</span>
+                        )}
                       </td>
+
+                      <td className="p-4">
+                        {project.deadline ? (
+                          <div className="flex items-center space-x-1">
+                            <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                            <span className="text-sm text-muted-foreground">
+                              {formatDate(project.deadline)}
+                            </span>
+                          </div>
+                        ) : (
+                          <span className="text-sm text-muted-foreground">---</span>
+                        )}
+                      </td>
+
                       <td className="p-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -323,9 +414,9 @@ export default function ProjectsPage() {
                 variant="outline"
                 className="mt-2"
                 onClick={() => {
-                  setSearchTerm("")
-                  setStatusFilter("all")
-                  setPriorityFilter("all")
+                  setSearchTerm("");
+                  setStatusFilter("all");
+                  setPriorityFilter("all");
                 }}
               >
                 Clear Filters
@@ -379,5 +470,190 @@ export default function ProjectsPage() {
         </Card>
       </div>
     </div>
+  )
+}
+
+
+function CreateProjectForm({ onSubmit, teamMembers }: CreateProjectFormProps) {
+  const [formData, setFormData] = useState({
+    name: "",
+    description: "",
+    startDate: "",
+    deadline: "",
+    members: [],
+  })
+
+  const [selectedMembers, setSelectedMembers] = useState<Members[]>([])
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+
+    // Format the data according to your specified structure
+    const projectData = {
+      name: formData.name,
+      description: formData.description,
+      startDate: formData.startDate,
+      deadline: formData.deadline,
+      members: selectedMembers.map((member) => ({
+        userId: member.id,
+        role: member.role,
+      })),
+    }
+
+    onSubmit(projectData);
+
+    // Reset form
+    setFormData({
+      name: "",
+      description: "",
+      startDate: "",
+      deadline: "",
+      members: [],
+    });
+    setSelectedMembers([]);
+  }
+
+  const handleMemberToggle = (member: Members, checked: boolean) => {
+    if (checked) {
+      setSelectedMembers((prev) => [...prev, { ...member, role: "MEMBER" }]);
+    } else {
+      setSelectedMembers((prev) => prev.filter((m) => m.id !== member.id));
+    }
+  }
+
+  const handleRoleChange = (id: string, newRole: string) => {
+    setSelectedMembers((prev) =>
+      prev.map((member) => (member.id === id ? { ...member, role: newRole } : member))
+    );
+  }
+
+  const removeMember = (id: string) => {
+    setSelectedMembers((prev) => prev.filter((m) => m.id !== id))
+  }
+
+  return (
+    <form onSubmit={handleSubmit} className="space-y-6">
+      <div className="space-y-4">
+        <div className="space-y-2">
+          <Label htmlFor="name">Project Name *</Label>
+          <Input
+            id="name"
+            value={formData.name}
+            onChange={(e) => setFormData((prev) => ({ ...prev, name: e.target.value }))}
+            placeholder="Enter project name"
+            required
+          />
+        </div>
+
+        <div className="space-y-2">
+          <Label htmlFor="description">Description *</Label>
+          <Textarea
+            id="description"
+            value={formData.description}
+            onChange={(e) => setFormData((prev) => ({ ...prev, description: e.target.value }))}
+            placeholder="Describe your project"
+            rows={3}
+            required
+          />
+        </div>
+
+        <div className="grid grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label htmlFor="startDate">Start Date *</Label>
+            <Input
+              id="startDate"
+              type="date"
+              value={formData.startDate}
+              onChange={(e) => setFormData((prev) => ({ ...prev, startDate: e.target.value }))}
+              required
+            />
+          </div>
+          <div className="space-y-2">
+            <Label htmlFor="deadline">End Date *</Label>
+            <Input
+              id="deadline"
+              type="date"
+              value={formData.deadline}
+              onChange={(e) => setFormData((prev) => ({ ...prev, deadline: e.target.value }))}
+              required
+            />
+          </div>
+        </div>
+
+        <div className="space-y-4">
+          <Label>Team Members</Label>
+
+          {/* Selected Members */}
+          {selectedMembers.length > 0 && (
+            <div className="space-y-2">
+              <Label className="text-sm font-medium">Selected Members ({selectedMembers.length})</Label>
+              <div className="space-y-2 max-h-32 overflow-y-auto border rounded-md p-2">
+                {selectedMembers.map((member) => (
+                  <div key={member.id} className="flex items-center justify-between p-2 bg-muted rounded-md">
+                    <div className="flex items-center space-x-2">
+                      <Avatar className="h-6 w-6">
+                        <AvatarFallback className="text-xs">{member.shortName}</AvatarFallback>
+                      </Avatar>
+                      <span className="text-sm font-medium">{member.name}</span>
+                    </div>
+                    <div className="flex items-center space-x-2">
+                      <Select value={member.role} onValueChange={(value) => handleRoleChange(member.id, value)}>
+                        <SelectTrigger className="w-24 h-7">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="ADMIN">Admin</SelectItem>
+                          <SelectItem value="MEMBER">Member</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => removeMember(member.id)}
+                        className="h-7 w-7 p-0"
+                      >
+                        <X className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
+
+          {/* Available Members */}
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Available Team Members</Label>
+            <div className="max-h-48 overflow-y-auto border rounded-md p-2 space-y-2">
+              {teamMembers?.length ? teamMembers.map((member) => {
+                const isSelected = selectedMembers.some((m) => m.id === member.id)
+                return (
+                  <div key={member.id} className="flex items-center space-x-3 p-2 hover:bg-muted rounded-md">
+                    <Checkbox checked={isSelected} onCheckedChange={(checked) => handleMemberToggle(member, checked)} />
+                    <Avatar className="h-8 w-8">
+                      <AvatarFallback>{member.shortName}</AvatarFallback>
+                    </Avatar>
+                    <div className="flex-1">
+                      <div className="font-medium text-sm">{member.name}</div>
+                      <div className="text-xs text-muted-foreground">{member.email}</div>
+                    </div>
+                  </div>
+                )
+              }) : <div className="text-sm text-muted-foreground">No members available.</div>}
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <DialogFooter>
+        <Button
+          type="submit"
+          disabled={!formData.name || !formData.description || !formData.startDate || !formData.deadline}
+        >
+          Create Project
+        </Button>
+      </DialogFooter>
+    </form>
   )
 }

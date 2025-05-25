@@ -1,76 +1,5 @@
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { Badge } from "@/components/ui/badge"
-import { Avatar, AvatarFallback } from "@/components/ui/avatar"
-import { CalendarDays, FolderKanban, Plus, Users } from "lucide-react"
-import Link from "next/link"
-
-const projects = [
-  {
-    id: 1,
-    name: "Website Redesign",
-    description: "Complete overhaul of the company website with modern design",
-    status: "In Progress",
-    progress: 65,
-    members: 5,
-    dueDate: "2024-02-15",
-    color: "bg-blue-500",
-  },
-  {
-    id: 2,
-    name: "Mobile App Development",
-    description: "Native iOS and Android app for customer engagement",
-    status: "Planning",
-    progress: 20,
-    members: 8,
-    dueDate: "2024-03-30",
-    color: "bg-green-500",
-  },
-  {
-    id: 3,
-    name: "Database Migration",
-    description: "Migrate legacy database to cloud infrastructure",
-    status: "Review",
-    progress: 90,
-    members: 3,
-    dueDate: "2024-01-20",
-    color: "bg-purple-500",
-  },
-  {
-    id: 4,
-    name: "Marketing Campaign",
-    description: "Q1 digital marketing campaign for product launch",
-    status: "Not Started",
-    progress: 0,
-    members: 6,
-    dueDate: "2024-04-01",
-    color: "bg-orange-500",
-  },
-]
-
-const recentActivity = [
-  {
-    user: "Alice Johnson",
-    action: "completed task",
-    target: "User Authentication",
-    time: "2 hours ago",
-    avatar: "AJ",
-  },
-  {
-    user: "Bob Smith",
-    action: "created project",
-    target: "API Documentation",
-    time: "4 hours ago",
-    avatar: "BS",
-  },
-  {
-    user: "Carol Davis",
-    action: "updated task",
-    target: "Database Schema",
-    time: "6 hours ago",
-    avatar: "CD",
-  },
-]
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
+import { CalendarDays, FolderKanban, Users } from "lucide-react"
 
 export default function DashboardPage() {
   return (
@@ -78,14 +7,8 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here's what's happening with your projects.</p>
+          <p className="text-muted-foreground">Welcome back! Here&apos;s what&apos;s happening with your projects.</p>
         </div>
-        <Button asChild>
-          <Link href="/projects/new">
-            <Plus className="mr-2 h-4 w-4" />
-            New Project
-          </Link>
-        </Button>
       </div>
 
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">

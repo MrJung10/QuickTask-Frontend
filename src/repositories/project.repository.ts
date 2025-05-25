@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api/config";
-import { Project, ProjectListResponse } from "@/types/project.types";
+import { Project, ProjectListResponse, CreateProjectDto } from "@/types/project.types";
 
 class ProjectRepo {
     constructor() {}
@@ -16,7 +16,7 @@ class ProjectRepo {
     }
 
     async createProject(
-        payload: Partial<Project>,
+        payload: CreateProjectDto,
         onSuccess: (data: Project) => void,
         onError: (message: string) => void
       ) {

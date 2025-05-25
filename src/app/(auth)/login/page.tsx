@@ -38,6 +38,7 @@ export default function LoginPage() {
   useEffect(() => {
     console.log("isAuthenticated", isAuthenticated)
     if (isAuthenticated) {
+      console.log("Redirecting to dashboard")
       router.push("/dashboard")
     }
   }, [isAuthenticated, router])

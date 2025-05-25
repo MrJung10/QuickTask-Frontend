@@ -1,6 +1,6 @@
 import Cookies from "js-cookie";
 
-export const setAuthCookies = (accessToken: string, refreshToken: string, userDetails: any) => {
+export const setAuthCookies = (accessToken: string, refreshToken: string, userDetails: undefined) => {
   Cookies.set("accessToken", accessToken, {
     expires: 0.0104, // 15 min = 0.0104 days
     sameSite: "Lax",
