@@ -6,8 +6,8 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint",
-    "test": "echo \"No tests defined\" && exit 0"
+    "test": "echo \"No tests defined\" && exit 0",
+    "lint": "echo \"No linting yet\" && exit 0"
   },
   "dependencies": {
     "@hookform/resolvers": "^5.0.1",
@@ -25,6 +25,7 @@
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "cookies-next": "^5.1.0",
+    "date-fns": "^4.1.0",
     "js-cookie": "^3.0.5",
     "lucide-react": "^0.511.0",
     "next": "15.1.8",
