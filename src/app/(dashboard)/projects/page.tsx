@@ -33,7 +33,7 @@ import { Label } from "@radix-ui/react-label"
 import { Textarea } from "@/components/ui/textarea"
 import { useUserStore } from "@/store/userStore"
 import { Members } from "@/types/user.types"
-
+import { toast } from "sonner"
 
 // Extend Members with projectRole
 interface ProjectFormMember extends Members {
@@ -173,6 +173,7 @@ export default function ProjectsPage() {
       await addProject(formattedData);
       setIsCreateModalOpen(false);
       setCreateError(null);
+      toast('New project added.');
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : "Failed to create project";
       setCreateError(errorMessage);

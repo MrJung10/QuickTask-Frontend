@@ -85,7 +85,7 @@ class ProjectRepo {
     onError: (message: string) => void
   ) {
     try {
-      const { data } = await apiClient.post<{ success: boolean; data: Task }>(`/project/${projectId}/tasks`, payload)
+      const { data } = await apiClient.post<{ success: boolean; data: Task }>(`/projects/${projectId}/tasks`, payload)
       onSuccess(data.data)
       return data.data
     } catch (error) {

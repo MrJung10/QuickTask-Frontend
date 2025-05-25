@@ -19,6 +19,7 @@ import {
 } from "@/components/ui/card"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { useAuth, useAuthActions } from "@/store/auth-store"
+import { toast } from "sonner"
 
 export default function LoginPage() {
   const router = useRouter()
@@ -40,6 +41,7 @@ export default function LoginPage() {
     if (isAuthenticated) {
       console.log("Redirecting to dashboard")
       router.push("/dashboard")
+      toast("Login successfully.")
     }
   }, [isAuthenticated, router])
 
@@ -51,7 +53,7 @@ export default function LoginPage() {
   const onSubmit = async (data: LoginSchema) => {
     try {
       await login(data)
-      // Success toast will be shown in the useEffect above when isAuthenticated becomes true
+      router.push("/dashboard")
     } catch (err) {
       // Error toast will be already handled by the auth store callback
       console.error("Login failed:", err)

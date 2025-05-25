@@ -182,8 +182,8 @@ export const useAuthStore = create<AuthState>()(
 );
 
 function setAuthCookies(accessToken: string, refreshToken: string, userDetails?: User): void {
-  Cookies.set('accessToken', accessToken, { expires: 1 }); // 1 day expiry
-  Cookies.set('refreshToken', refreshToken, { expires: 7 }); // 7 days expiry
+  Cookies.set('accessToken', accessToken, { expires: 0.0104, sameSite: "Lax" }); // 1 day expiry
+  Cookies.set('refreshToken', refreshToken, { expires: 7, sameSite: "Lax" }); // 7 days expiry
   if (userDetails) {
     Cookies.set('userDetails', JSON.stringify(userDetails), { expires: 1 });
   }
