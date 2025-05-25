@@ -1,6 +1,6 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
 import Link from "next/link"
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
@@ -16,125 +16,67 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CalendarDays, MoreHorizontal, Plus, Search } from "lucide-react"
+import { AlertCircle, CalendarDays, Loader2, MoreHorizontal, Plus, Search } from "lucide-react"
+import { Project } from "@/types/project.types"
+import { useProjectStore } from "@/store/projectStore"
 
-const allProjects = [
-  {
-    id: 1,
-    name: "Website Redesign",
-    description: "Complete overhaul of the company website with modern design",
-    status: "In Progress",
-    progress: 65,
-    members: [
-      { name: "Alice Johnson", avatar: "AJ" },
-      { name: "Bob Smith", avatar: "BS" },
-      { name: "Carol Davis", avatar: "CD" },
-    ],
-    totalMembers: 5,
-    dueDate: "2024-02-15",
-    createdDate: "2024-01-01",
-    priority: "High",
-    color: "bg-blue-500",
-  },
-  {
-    id: 2,
-    name: "Mobile App Development",
-    description: "Native iOS and Android app for customer engagement",
-    status: "Planning",
-    progress: 20,
-    members: [
-      { name: "David Wilson", avatar: "DW" },
-      { name: "Eve Brown", avatar: "EB" },
-      { name: "Frank Miller", avatar: "FM" },
-    ],
-    totalMembers: 8,
-    dueDate: "2024-03-30",
-    createdDate: "2024-01-05",
-    priority: "High",
-    color: "bg-green-500",
-  },
-  {
-    id: 3,
-    name: "Database Migration",
-    description: "Migrate legacy database to cloud infrastructure",
-    status: "Review",
-    progress: 90,
-    members: [
-      { name: "Bob Smith", avatar: "BS" },
-      { name: "Frank Miller", avatar: "FM" },
-    ],
-    totalMembers: 3,
-    dueDate: "2024-01-20",
-    createdDate: "2023-12-15",
-    priority: "Critical",
-    color: "bg-purple-500",
-  },
-  {
-    id: 4,
-    name: "Marketing Campaign",
-    description: "Q1 digital marketing campaign for product launch",
-    status: "Not Started",
-    progress: 0,
-    members: [
-      { name: "Carol Davis", avatar: "CD" },
-      { name: "Eve Brown", avatar: "EB" },
-    ],
-    totalMembers: 6,
-    dueDate: "2024-04-01",
-    createdDate: "2024-01-10",
-    priority: "Medium",
-    color: "bg-orange-500",
-  },
-  {
-    id: 5,
-    name: "API Documentation",
-    description: "Comprehensive API documentation for developers",
-    status: "In Progress",
-    progress: 45,
-    members: [
-      { name: "Eve Brown", avatar: "EB" },
-      { name: "Bob Smith", avatar: "BS" },
-    ],
-    totalMembers: 2,
-    dueDate: "2024-02-28",
-    createdDate: "2024-01-08",
-    priority: "Low",
-    color: "bg-cyan-500",
-  },
-  {
-    id: 6,
-    name: "Security Audit",
-    description: "Complete security audit and vulnerability assessment",
-    status: "Done",
-    progress: 100,
-    members: [
-      { name: "Frank Miller", avatar: "FM" },
-      { name: "David Wilson", avatar: "DW" },
-    ],
-    totalMembers: 4,
-    dueDate: "2024-01-15",
-    createdDate: "2023-12-01",
-    priority: "Critical",
-    color: "bg-red-500",
-  },
-]
+// Helper function to calculate project status based on dates and completion
+const calculateProjectStatus = (project: Project): string => {
+  const now = new Date()
+  const deadline = new Date(project.deadline)
+  const startDate = new Date(project.startDate)
+  
+  // Simple status logic - you might want to adjust this based on your business rules
+  if (now > deadline) {
+    return "Overdue"
+  } else if (now < startDate) {
+    return "Not Started"
+  } else {
+    return "In Progress"
+  }
+}
+
+// Helper function to calculate project priority based on deadline proximity
+const calculateProjectPriority = (project: Project): string => {
+  const now = new Date()
+  const deadline = new Date(project.deadline)
+  const daysUntilDeadline = Math.ceil((deadline.getTime() - now.getTime()) / (1000 * 60 * 60 * 24))
+  
+  if (daysUntilDeadline < 0) {
+    return "Critical"
+  } else if (daysUntilDeadline <= 7) {
+    return "High"
+  } else if (daysUntilDeadline <= 30) {
+    return "Medium"
+  } else {
+    return "Low"
+  }
+}
 
 export default function ProjectsPage() {
+  const { projects, loading, error, fetchProjects, deleteProject } = useProjectStore();
   const [searchTerm, setSearchTerm] = useState("")
   const [statusFilter, setStatusFilter] = useState("all")
   const [priorityFilter, setPriorityFilter] = useState("all")
 
-  const filteredProjects = allProjects.filter((project) => {
+  useEffect(() => {
+    fetchProjects()
+  }, [fetchProjects])
+
+  const filteredProjects = projects.filter((project) => {
+    const projectStatus = calculateProjectStatus(project)
+    const projectPriority = calculateProjectPriority(project)
+
     const matchesSearch =
       project.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       project.description.toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesStatus = statusFilter === "all" || project.status === statusFilter
-    const matchesPriority = priorityFilter === "all" || project.priority === priorityFilter
+    const matchesStatus = statusFilter === "all" || projectStatus === statusFilter
+    const matchesPriority = priorityFilter === "all" || projectPriority === priorityFilter
 
     return matchesSearch && matchesStatus && matchesPriority
   })
 
-  const getStatusColor = (status) => {
+  const getStatusColor = (status: string) => {
     switch (status) {
       case "In Progress":
         return "bg-blue-100 text-blue-800"
@@ -151,7 +93,7 @@ export default function ProjectsPage() {
     }
   }
 
-  const getPriorityColor = (priority) => {
+  const getPriorityColor = (priority: string) => {
     switch (priority) {
       case "Critical":
         return "bg-red-100 text-red-800"
@@ -164,6 +106,62 @@ export default function ProjectsPage() {
       default:
         return "bg-gray-100 text-gray-800"
     }
+  }
+
+  const getProjectColor = (index: number): string => {
+    const colors = [
+      "bg-blue-500",
+      "bg-green-500",
+      "bg-purple-500",
+      "bg-orange-500",
+      "bg-cyan-500",
+      "bg-red-500",
+      "bg-pink-500",
+      "bg-indigo-500",
+    ]
+    return colors[index % colors.length]
+  }
+
+  const handleDeleteProject = async (projectId: string) => {
+    if (confirm("Are you sure you want to delete this project?")) {
+      await deleteProject(projectId);
+    }
+  }
+
+  const formatDate = (dateString: string) => {
+    return new Date(dateString).toLocaleDateString('en-US', {
+      year: 'numeric',
+      month: 'short',
+      day: 'numeric'
+    })
+  }
+
+  // Calculate statistics
+  const totalProjects = projects.length
+  const inProgressProjects = projects.filter(p => calculateProjectStatus(p) === "In Progress").length
+  const completedProjects = projects.filter(p => calculateProjectStatus(p) === "Completed").length
+  const overdueProjects = projects.filter(p => calculateProjectStatus(p) === "Overdue").length
+  const totalMembers = projects.reduce((sum, project) => sum + project.totalMembers, 0)
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading projects...</span>
+      </div>
+    )
+  }
+
+  if (error) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <span className="ml-2 text-red-600">{error}</span>
+        <Button variant="outline" className="ml-4" onClick={fetchProjects}>
+          Retry
+        </Button>
+      </div>
+    )
   }
 
   return (
@@ -237,70 +235,83 @@ export default function ProjectsPage() {
                 </tr>
               </thead>
               <tbody>
-                {filteredProjects.map((project) => (
-                  <tr key={project.id} className="border-b transition-colors hover:bg-muted/50">
-                    <td className="p-4">
-                      <div className="flex items-center space-x-3">
-                        <div className={`w-3 h-3 rounded-full ${project.color}`} />
-                        <div className="min-w-0">
-                          <Link href={`/projects/${project.id}`} className="font-medium hover:underline block truncate">
-                            {project.name}
-                          </Link>
-                          <p className="text-sm text-muted-foreground truncate max-w-xs">{project.description}</p>
+                {filteredProjects.map((project, index) => {
+                  const status = calculateProjectStatus(project)
+                  const priority = calculateProjectPriority(project)
+                  
+                  return (
+                    <tr key={project.id} className="border-b transition-colors hover:bg-muted/50">
+                      <td className="p-4">
+                        <div className="flex items-center space-x-3">
+                          <div className={`w-3 h-3 rounded-full ${getProjectColor(index)}`} />
+                          <div className="min-w-0">
+                            <Link href={`/projects/${project.id}`} className="font-medium hover:underline block truncate">
+                              {project.name}
+                            </Link>
+                            <p className="text-sm text-muted-foreground truncate max-w-xs">{project.description}</p>
+                          </div>
                         </div>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <Badge className={getStatusColor(project.status)}>{project.status}</Badge>
-                    </td>
-                    <td className="p-4">
-                      <Badge className={getPriorityColor(project.priority)}>{project.priority}</Badge>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center space-x-2">
-                        <div className="flex -space-x-2">
-                          {project.members.slice(0, 3).map((member, index) => (
-                            <Avatar key={index} className="h-6 w-6 border-2 border-background">
-                              <AvatarFallback className="text-xs">{member.avatar}</AvatarFallback>
-                            </Avatar>
-                          ))}
-                          {project.totalMembers > 3 && (
-                            <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-muted text-xs">
-                              +{project.totalMembers - 3}
-                            </div>
-                          )}
+                      </td>
+                      <td className="p-4">
+                        <Badge className={getStatusColor(status)}>{status}</Badge>
+                      </td>
+                      <td className="p-4">
+                        <Badge className={getPriorityColor(priority)}>{priority}</Badge>
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center space-x-2">
+                          <div className="flex -space-x-2">
+                            {project.members.slice(0, 3).map((member, memberIndex) => (
+                              <Avatar key={member.id} className="h-6 w-6 border-2 border-background">
+                                <AvatarFallback className="text-xs">{member.shortName}</AvatarFallback>
+                              </Avatar>
+                            ))}
+                            {project.totalMembers > 3 && (
+                              <div className="flex h-6 w-6 items-center justify-center rounded-full border-2 border-background bg-muted text-xs">
+                                +{project.totalMembers - 3}
+                              </div>
+                            )}
+                          </div>
+                          <span className="text-sm text-muted-foreground">{project.totalMembers} members</span>
                         </div>
-                        <span className="text-sm text-muted-foreground">{project.totalMembers} members</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <div className="flex items-center space-x-1">
-                        <CalendarDays className="h-3 w-3 text-muted-foreground" />
-                        <span className="text-sm text-muted-foreground">{project.dueDate}</span>
-                      </div>
-                    </td>
-                    <td className="p-4">
-                      <DropdownMenu>
-                        <DropdownMenuTrigger asChild>
-                          <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                            <MoreHorizontal className="h-4 w-4" />
-                          </Button>
-                        </DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                          <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                          <DropdownMenuItem asChild>
-                            <Link href={`/projects/${project.id}`}>View Project</Link>
-                          </DropdownMenuItem>
-                          <DropdownMenuItem>Edit Project</DropdownMenuItem>
-                          <DropdownMenuItem>Manage Team</DropdownMenuItem>
-                          <DropdownMenuItem>Clone Project</DropdownMenuItem>
-                          <DropdownMenuSeparator />
-                          <DropdownMenuItem className="text-red-600">Archive Project</DropdownMenuItem>
-                        </DropdownMenuContent>
-                      </DropdownMenu>
-                    </td>
-                  </tr>
-                ))}
+                      </td>
+                      <td className="p-4">
+                        <div className="flex items-center space-x-1">
+                          <CalendarDays className="h-3 w-3 text-muted-foreground" />
+                          <span className="text-sm text-muted-foreground">{formatDate(project.deadline)}</span>
+                        </div>
+                      </td>
+                      <td className="p-4">
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                              <MoreHorizontal className="h-4 w-4" />
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/projects/${project.id}`}>View Project</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/projects/${project.id}/edit`}>Edit Project</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild>
+                              <Link href={`/projects/${project.id}/team`}>Manage Team</Link>
+                            </DropdownMenuItem>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem 
+                              className="text-red-600"
+                              onClick={() => handleDeleteProject(project.id)}
+                            >
+                              Delete Project
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </td>
+                    </tr>
+                  )
+                })}
               </tbody>
             </table>
           </div>
@@ -330,9 +341,9 @@ export default function ProjectsPage() {
             <CardTitle className="text-sm font-medium">Total Projects</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{allProjects.length}</div>
+            <div className="text-2xl font-bold">{totalProjects}</div>
             <p className="text-xs text-muted-foreground">
-              {allProjects.filter((p) => p.status === "In Progress").length} in progress
+              {inProgressProjects} in progress
             </p>
           </CardContent>
         </Card>
@@ -341,9 +352,9 @@ export default function ProjectsPage() {
             <CardTitle className="text-sm font-medium">Completed</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{allProjects.filter((p) => p.status === "Done").length}</div>
+            <div className="text-2xl font-bold">{completedProjects}</div>
             <p className="text-xs text-muted-foreground">
-              {Math.round((allProjects.filter((p) => p.status === "Done").length / allProjects.length) * 100)}%
+              {totalProjects > 0 ? Math.round((completedProjects / totalProjects) * 100) : 0}%
               completion rate
             </p>
           </CardContent>
@@ -353,7 +364,7 @@ export default function ProjectsPage() {
             <CardTitle className="text-sm font-medium">Overdue</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">2</div>
+            <div className="text-2xl font-bold">{overdueProjects}</div>
             <p className="text-xs text-muted-foreground">Require immediate attention</p>
           </CardContent>
         </Card>
@@ -362,7 +373,7 @@ export default function ProjectsPage() {
             <CardTitle className="text-sm font-medium">Team Members</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">24</div>
+            <div className="text-2xl font-bold">{totalMembers}</div>
             <p className="text-xs text-muted-foreground">Across all projects</p>
           </CardContent>
         </Card>

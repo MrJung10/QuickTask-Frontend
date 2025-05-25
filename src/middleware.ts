@@ -8,7 +8,11 @@ export function middleware(request: NextRequest) {
   }
 
   // Protect dashboard routes
-  if (!token && request.nextUrl.pathname.startsWith('/dashboard')) {
+  const protectedPaths = ['/dashboard', '/projects'];
+  const isProtected = protectedPaths.some((path) =>
+    request.nextUrl.pathname.startsWith(path)
+  );
+  if (!token && isProtected) {
     return NextResponse.redirect(new URL('/login', request.url));
   }
 
@@ -16,5 +20,5 @@ export function middleware(request: NextRequest) {
 }
 
 export const config = {
-  matcher: ['/login', '/dashboard/:path*'],
+  matcher: ['/login', '/dashboard/:path*', '/projects/:path*'],
 };

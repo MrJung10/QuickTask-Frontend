@@ -56,18 +56,10 @@ class AuthRepo {
 
   async logout(onSuccess: () => void, onError: (message: string) => void) {
     try {
-      const token = Cookies.get("accessToken");
-      console.log('token', token);
+      // const token = Cookies.get("accessToken");
+      // console.log('token', token);
 
-      await apiClient.post(
-        "/auth/logout",
-        {},
-        {
-          headers: { 
-            ...(token && { Authorization: `Bearer ${token}`}),
-          }
-        }
-      );
+      await apiClient.post("/auth/logout", {});
       onSuccess();
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>;
