@@ -18,7 +18,7 @@ import {
 } from "@/components/ui/dropdown-menu"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
 import { AlertCircle, CalendarDays, Loader2, MoreHorizontal, Plus, Search, X } from "lucide-react"
-import { Project } from "@/types/project.types"
+import { Project, CreateProjectDto } from "@/types/project.types"
 import { useProjectStore } from "@/store/projectStore"
 import {
   Dialog,
@@ -40,7 +40,6 @@ const calculateProjectStatus = (project: Project): string => {
   const deadline = new Date(project.deadline)
   const startDate = new Date(project.startDate)
   
-  // Simple status logic - you might want to adjust this based on your business rules
   if (now > deadline) {
     return "Overdue"
   } else if (now < startDate) {
@@ -67,31 +66,29 @@ const calculateProjectPriority = (project: Project): string => {
   }
 }
 
-interface CreateProjectFormProps {
-  onSubmit: (projectData: {
-    name: string;
-    description: string;
-    startDate: string;
-    deadline: string;
-    members: { userId: string; role: string }[];
-  }) => void;
+interface ProjectFormProps {
+  onSubmit: (projectData: CreateProjectDto) => void;
   teamMembers: Members[];
+  initialData?: Project;  // For editing
+  isEditMode?: boolean;   // To toggle create/edit mode
 }
 
 export default function ProjectsPage() {
-  const { projects, loading, error, fetchProjects, deleteProject, addProject } = useProjectStore();
+  const { projects, loading, error, fetchProjects, deleteProject, addProject, updateProject } = useProjectStore();
   const { members, fetchMembers } = useUserStore();
 
-  const [searchTerm, setSearchTerm] = useState("")
-  const [statusFilter, setStatusFilter] = useState("all")
-  const [priorityFilter, setPriorityFilter] = useState("all")
-  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false)
-  const [createError, setCreateError ] = useState<string | null>(null)
+  const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState("all");
+  const [priorityFilter, setPriorityFilter] = useState("all");
+  const [isCreateModalOpen, setIsCreateModalOpen] = useState(false);
+  const [isEditModalOpen, setIsEditModalOpen] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
+  const [createError, setCreateError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchProjects();
     fetchMembers();
-  }, [fetchProjects, fetchMembers])
+  }, [fetchProjects, fetchMembers]);
 
   const filteredProjects = projects.filter((project) => {
     const projectStatus = calculateProjectStatus(project);
@@ -104,7 +101,7 @@ export default function ProjectsPage() {
     const matchesPriority = priorityFilter === "all" || projectPriority === priorityFilter;
 
     return matchesSearch && matchesStatus && matchesPriority;
-  })
+  });
 
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -150,49 +147,65 @@ export default function ProjectsPage() {
       "bg-indigo-500",
     ];
     return colors[index % colors.length];
-  }
+  };
 
-  const handleCreateProject = (projectData: {
-    name: string;
-    description: string;
-    startDate: string;
-    deadline: string;
-    members: { userId: string; role: string }[];
-  }) => {
+  const handleCreateProject = async (projectData: CreateProjectDto) => {
     try {
-      console.log('projectData', projectData);
-      addProject(projectData);
+      await addProject(projectData);
       setIsCreateModalOpen(false);
+      setCreateError(null);
     } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to create project";
+      setCreateError(errorMessage);
       console.error("Failed to create project:", error);
     }
+  };
 
-
-
-    console.log("Creating project:", projectData)
-    // Here you would typically send the data to your API
-    
-  }
+  const handleUpdateProject = async (projectData: CreateProjectDto) => {
+    if (!editingProject) return;
+    try {
+      await updateProject(editingProject.id, projectData);
+      setIsEditModalOpen(false);
+      setEditingProject(null);
+      setCreateError(null);
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : "Failed to update project";
+      setCreateError(errorMessage);
+      console.error("Failed to update project:", error);
+    }
+  };
 
   const handleDeleteProject = async (projectId: string) => {
     if (confirm("Are you sure you want to delete this project?")) {
-      await deleteProject(projectId);
+      try {
+        await deleteProject(projectId);
+        setCreateError(null);
+      } catch (error) {
+        const errorMessage = error instanceof Error ? error.message : "Failed to delete project";
+        setCreateError(errorMessage);
+        console.error("Failed to delete project:", error);
+      }
     }
-  }
+  };
+
+  const handleEditProject = (project: Project) => {
+    setEditingProject(project);
+    setIsEditModalOpen(true);
+  };
 
   const formatDate = (dateString: string) => {
     return new Date(dateString).toLocaleDateString('en-US', {
-      year: 'numeric',
-      month: 'short',
-      day: 'numeric'
-    })
+      year: "numeric",
+      month: "short",
+      day: "numeric"
+    });
   }
 
   // Calculate statistics
   const totalProjects = projects.length;
-  const inProgressProjects = projects.filter(p => calculateProjectStatus(p) === "In Progress").length;
-  const completedProjects = projects.filter(p => calculateProjectStatus(p) === "Completed").length;
-  const overdueProjects = projects.filter(p => calculateProjectStatus(p) === "Overdue").length;
+  const inProgressProjects = projects.filter((p) => calculateProjectStatus(p) === "In Progress").length;
+  const completedProjects = projects.filter((p) => calculateProjectStatus(p) === "Completed").length;
+  const overdueProjects = projects.filter((p) => calculateProjectStatus(p) === "Overdue").length;
   const totalMembers = projects.reduce((sum, project) => sum + project.totalMembers, 0);
 
   if (loading) {
@@ -201,7 +214,7 @@ export default function ProjectsPage() {
         <Loader2 className="h-8 w-8 animate-spin" />
         <span className="ml-2">Loading projects...</span>
       </div>
-    )
+    );
   }
 
   if (error) {
@@ -213,7 +226,7 @@ export default function ProjectsPage() {
           Retry
         </Button>
       </div>
-    )
+    );
   }
 
   return (
@@ -241,10 +254,31 @@ export default function ProjectsPage() {
               <DialogTitle>Create New Project</DialogTitle>
               <DialogDescription>Add a new project to your workspace with team members and roles.</DialogDescription>
             </DialogHeader>
-            <CreateProjectForm onSubmit={handleCreateProject} teamMembers={members} />
+            <ProjectForm onSubmit={handleCreateProject} teamMembers={members} />
           </DialogContent>
         </Dialog>
       </div>
+
+      {/* Edit Project Modal */}
+      <Dialog open={isEditModalOpen} onOpenChange={(open) => {
+        setIsEditModalOpen(open);
+        if (!open) setEditingProject(null);
+      }}>
+        <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Project</DialogTitle>
+            <DialogDescription>Update the project details and team members.</DialogDescription>
+          </DialogHeader>
+          {editingProject && (
+            <ProjectForm
+              onSubmit={handleUpdateProject}
+              teamMembers={members}
+              initialData={editingProject}
+              isEditMode={true}
+            />
+          )}
+        </DialogContent>
+      </Dialog>
 
       <div className="flex items-center space-x-4">
         <div className="relative flex-1 max-w-sm">
@@ -384,8 +418,8 @@ export default function ProjectsPage() {
                             <DropdownMenuItem asChild>
                               <Link href={`/projects/${project.id}`}>View Project</Link>
                             </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/projects/${project.id}/edit`}>Edit Project</Link>
+                            <DropdownMenuItem onClick={() => handleEditProject(project)}>
+                              Edit Project
                             </DropdownMenuItem>
                             <DropdownMenuItem asChild>
                               <Link href={`/projects/${project.id}/team`}>Manage Team</Link>
@@ -401,7 +435,7 @@ export default function ProjectsPage() {
                         </DropdownMenu>
                       </td>
                     </tr>
-                  )
+                  );
                 })}
               </tbody>
             </table>
@@ -470,47 +504,55 @@ export default function ProjectsPage() {
         </Card>
       </div>
     </div>
-  )
+  );
 }
 
 
-function CreateProjectForm({ onSubmit, teamMembers }: CreateProjectFormProps) {
+function ProjectForm({ onSubmit, teamMembers, initialData, isEditMode = false }: ProjectFormProps) {
   const [formData, setFormData] = useState({
-    name: "",
-    description: "",
-    startDate: "",
-    deadline: "",
-    members: [],
-  })
+    name: initialData?.name || "",
+    description: initialData?.description || "",
+    startDate: initialData?.startDate || "",
+    deadline: initialData?.deadline || "",
+    members: initialData?.members || [],
+  });
 
-  const [selectedMembers, setSelectedMembers] = useState<Members[]>([])
+  const [selectedMembers, setSelectedMembers] = useState<Members[]>(
+    initialData?.members.map((m) => ({
+      id: m.id,
+      name: m.name,
+      shortName: m.shortName,
+      email: m.email,
+      role: m.projectRole,
+    })) || []
+  );
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
 
-    // Format the data according to your specified structure
-    const projectData = {
+    const projectData: CreateProjectDto = {
       name: formData.name,
       description: formData.description,
       startDate: formData.startDate,
       deadline: formData.deadline,
       members: selectedMembers.map((member) => ({
         userId: member.id,
-        role: member.role,
+        role: member.role as "ADMIN" | "MEMBER",
       })),
-    }
+    };
 
     onSubmit(projectData);
 
-    // Reset form
-    setFormData({
-      name: "",
-      description: "",
-      startDate: "",
-      deadline: "",
-      members: [],
-    });
-    setSelectedMembers([]);
+    if (!isEditMode) {
+      setFormData({
+        name: "",
+        description: "",
+        startDate: "",
+        deadline: "",
+        members: [],
+      });
+      setSelectedMembers([]);
+    };
   }
 
   const handleMemberToggle = (member: Members, checked: boolean) => {
@@ -519,17 +561,17 @@ function CreateProjectForm({ onSubmit, teamMembers }: CreateProjectFormProps) {
     } else {
       setSelectedMembers((prev) => prev.filter((m) => m.id !== member.id));
     }
-  }
+  };
 
   const handleRoleChange = (id: string, newRole: string) => {
     setSelectedMembers((prev) =>
       prev.map((member) => (member.id === id ? { ...member, role: newRole } : member))
     );
-  }
+  };
 
   const removeMember = (id: string) => {
-    setSelectedMembers((prev) => prev.filter((m) => m.id !== id))
-  }
+    setSelectedMembers((prev) => prev.filter((m) => m.id !== id));
+  };
 
   return (
     <form onSubmit={handleSubmit} className="space-y-6">
@@ -626,21 +668,25 @@ function CreateProjectForm({ onSubmit, teamMembers }: CreateProjectFormProps) {
           <div className="space-y-2">
             <Label className="text-sm font-medium">Available Team Members</Label>
             <div className="max-h-48 overflow-y-auto border rounded-md p-2 space-y-2">
-              {teamMembers?.length ? teamMembers.map((member) => {
-                const isSelected = selectedMembers.some((m) => m.id === member.id)
-                return (
-                  <div key={member.id} className="flex items-center space-x-3 p-2 hover:bg-muted rounded-md">
-                    <Checkbox checked={isSelected} onCheckedChange={(checked) => handleMemberToggle(member, checked)} />
-                    <Avatar className="h-8 w-8">
-                      <AvatarFallback>{member.shortName}</AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <div className="font-medium text-sm">{member.name}</div>
-                      <div className="text-xs text-muted-foreground">{member.email}</div>
+              {teamMembers?.length ? (
+                teamMembers.map((member) => {
+                  const isSelected = selectedMembers.some((m) => m.id === member.id);
+                  return (
+                    <div key={member.id} className="flex items-center space-x-3 p-2 hover:bg-muted rounded-md">
+                      <Checkbox checked={isSelected} onCheckedChange={(checked) => handleMemberToggle(member, checked)} />
+                      <Avatar className="h-8 w-8">
+                        <AvatarFallback>{member.shortName}</AvatarFallback>
+                      </Avatar>
+                      <div className="flex-1">
+                        <div className="font-medium text-sm">{member.name}</div>
+                        <div className="text-xs text-muted-foreground">{member.email}</div>
+                      </div>
                     </div>
-                  </div>
-                )
-              }) : <div className="text-sm text-muted-foreground">No members available.</div>}
+                  );
+                })
+              ) : (
+                <div className="text-sm text-muted-foreground">No members available.</div>
+              )}
             </div>
           </div>
         </div>
@@ -651,7 +697,7 @@ function CreateProjectForm({ onSubmit, teamMembers }: CreateProjectFormProps) {
           type="submit"
           disabled={!formData.name || !formData.description || !formData.startDate || !formData.deadline}
         >
-          Create Project
+          {isEditMode ? "Update Project" : "Create Project"}
         </Button>
       </DialogFooter>
     </form>

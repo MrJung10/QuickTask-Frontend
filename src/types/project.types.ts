@@ -25,7 +25,7 @@ export interface ProjectListResponse {
     data: Project[];
 }
 
-export interface CreateProjectDto {
+export interface CreateProjectDto extends Record<string, unknown> {
     name: string;
     description: string;
     startDate?: string;
