@@ -2,7 +2,7 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import { User, LoginPayload, RegisterPayload } from '@/types/auth.types';
 import { AuthRepository } from '@/repositories/auth.repository';
-import { clearAuthCookies, setAuthCookies } from '@/lib/utils/cookies';
+import { clearAuthCookies } from '@/lib/utils/cookies';
 import Cookies from "js-cookie";
 interface AuthState {
   // State
@@ -180,6 +180,14 @@ export const useAuthStore = create<AuthState>()(
     }
   )
 );
+
+function setAuthCookies(accessToken: string, refreshToken: string, userDetails?: User): void {
+  Cookies.set('accessToken', accessToken, { expires: 1 }); // 1 day expiry
+  Cookies.set('refreshToken', refreshToken, { expires: 7 }); // 7 days expiry
+  if (userDetails) {
+    Cookies.set('userDetails', JSON.stringify(userDetails), { expires: 1 });
+  }
+}
 
 // Selectors for easier access to specific state pieces
 export const useAuth = () => {

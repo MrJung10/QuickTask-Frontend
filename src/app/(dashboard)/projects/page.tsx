@@ -34,6 +34,19 @@ import { Textarea } from "@/components/ui/textarea"
 import { useUserStore } from "@/store/userStore"
 import { Members } from "@/types/user.types"
 
+
+// Extend Members with projectRole
+interface ProjectFormMember extends Members {
+  projectRole: string;
+}
+
+// Helper function to format date as YYYY-MM-DD HH:mm:ss
+const formatDateTime = (date?: string): string => {
+  if (!date) return "";
+  const d = new Date(date);
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")} 05:45:00`;
+}
+
 // Helper function to calculate project status based on dates and completion
 const calculateProjectStatus = (project: Project): string => {
   const now = new Date()
@@ -69,8 +82,8 @@ const calculateProjectPriority = (project: Project): string => {
 interface ProjectFormProps {
   onSubmit: (projectData: CreateProjectDto) => void;
   teamMembers: Members[];
-  initialData?: Project;  // For editing
-  isEditMode?: boolean;   // To toggle create/edit mode
+  initialData?: Project;
+  isEditMode?: boolean;
 }
 
 export default function ProjectsPage() {
@@ -151,7 +164,13 @@ export default function ProjectsPage() {
 
   const handleCreateProject = async (projectData: CreateProjectDto) => {
     try {
-      await addProject(projectData);
+      // Format dates for create
+      const formattedData = {
+        ...projectData,
+        startDate: formatDateTime(projectData.startDate),
+        deadline: formatDateTime(projectData.deadline),
+      };
+      await addProject(formattedData);
       setIsCreateModalOpen(false);
       setCreateError(null);
     } catch (error) {
@@ -164,7 +183,31 @@ export default function ProjectsPage() {
   const handleUpdateProject = async (projectData: CreateProjectDto) => {
     if (!editingProject) return;
     try {
-      await updateProject(editingProject.id, projectData);
+      // Transform projectData to match backend payload
+      const updateData: Partial<Project> = {
+        name: projectData.name,
+        description: projectData.description,
+        startDate: formatDateTime(projectData.startDate),
+        deadline: formatDateTime(projectData.deadline),
+        members: projectData.members.map((m) => {
+          // Find full member data from members or editingProject.members
+          const member = members.find((mem) => mem.id === m.userId) || 
+                        editingProject.members.find((mem) => mem.id === m.userId);
+          if (!member) {
+            throw new Error(`Member with ID ${m.userId} not found`);
+          }
+          return {
+            id: m.userId,
+            name: member.name,
+            shortName: member.shortName,
+            email: member.email,
+            role: m.role,
+            // userRole: m.role,
+            // projectRole: m.role,
+          };
+        }),
+      };
+      await updateProject(editingProject.id, updateData);
       setIsEditModalOpen(false);
       setEditingProject(null);
       setCreateError(null);
@@ -354,14 +397,12 @@ export default function ProjectsPage() {
                           </div>
                         </div>
                       </td>
-
                       <td className="p-4">
                         <Badge className={getStatusColor(status)}>{status}</Badge>
                       </td>
                       <td className="p-4">
                         <Badge className={getPriorityColor(priority)}>{priority}</Badge>
                       </td>
-
                       <td className="p-4">
                         <div className="flex items-center space-x-2">
                           <div className="flex -space-x-2">
@@ -379,7 +420,6 @@ export default function ProjectsPage() {
                           <span className="text-sm text-muted-foreground">{project.totalMembers} members</span>
                         </div>
                       </td>
-
                       <td className="p-4">
                         {project.startDate ? (
                           <div className="flex items-center space-x-1">
@@ -392,7 +432,6 @@ export default function ProjectsPage() {
                           <span className="text-sm text-muted-foreground">---</span>
                         )}
                       </td>
-
                       <td className="p-4">
                         {project.deadline ? (
                           <div className="flex items-center space-x-1">
@@ -405,7 +444,6 @@ export default function ProjectsPage() {
                           <span className="text-sm text-muted-foreground">---</span>
                         )}
                       </td>
-
                       <td className="p-4">
                         <DropdownMenu>
                           <DropdownMenuTrigger asChild>
@@ -507,24 +545,41 @@ export default function ProjectsPage() {
   );
 }
 
-
 function ProjectForm({ onSubmit, teamMembers, initialData, isEditMode = false }: ProjectFormProps) {
+  const { members } = useUserStore();
+
   const [formData, setFormData] = useState({
     name: initialData?.name || "",
     description: initialData?.description || "",
-    startDate: initialData?.startDate || "",
-    deadline: initialData?.deadline || "",
+    startDate: initialData?.startDate.split(" ")[0] || "",
+    deadline: initialData?.deadline.split(" ")[0] || "",
     members: initialData?.members || [],
   });
 
-  const [selectedMembers, setSelectedMembers] = useState<Members[]>(
-    initialData?.members.map((m) => ({
-      id: m.id,
-      name: m.name,
-      shortName: m.shortName,
-      email: m.email,
-      role: m.projectRole,
-    })) || []
+  // const [selectedMembers, setSelectedMembers] = useState<Members[]>(
+  const [selectedMembers, setSelectedMembers] = useState<ProjectFormMember[]>(
+    initialData?.members.map((m) => {
+      // Find full member data from members
+      const member = members.find((mem) => mem.id === m.id) || {
+        id: m.id,
+        name: m.name,
+        shortName: m.shortName,
+        email: m.email,
+        role: m.projectRole,
+        registeredAt: "",
+        projectMemberships: [],
+      };
+      return {
+        id: member.id,
+        name: member.name,
+        shortName: member.shortName,
+        email: member.email,
+        // role: member.role,
+        registeredAt: member.registeredAt,
+        projectMemberships: member.projectMemberships,
+        projectRole: m.role || "MEMBER",
+      };
+    }) || []
   );
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -537,7 +592,7 @@ function ProjectForm({ onSubmit, teamMembers, initialData, isEditMode = false }:
       deadline: formData.deadline,
       members: selectedMembers.map((member) => ({
         userId: member.id,
-        role: member.role as "ADMIN" | "MEMBER",
+        role: member.projectRole as "ADMIN" | "MEMBER",
       })),
     };
 
@@ -552,12 +607,12 @@ function ProjectForm({ onSubmit, teamMembers, initialData, isEditMode = false }:
         members: [],
       });
       setSelectedMembers([]);
-    };
+    }
   }
 
   const handleMemberToggle = (member: Members, checked: boolean) => {
     if (checked) {
-      setSelectedMembers((prev) => [...prev, { ...member, role: "MEMBER" }]);
+      setSelectedMembers((prev) => [...prev, { ...member, projectRole: "MEMBER" }]);
     } else {
       setSelectedMembers((prev) => prev.filter((m) => m.id !== member.id));
     }
@@ -565,7 +620,7 @@ function ProjectForm({ onSubmit, teamMembers, initialData, isEditMode = false }:
 
   const handleRoleChange = (id: string, newRole: string) => {
     setSelectedMembers((prev) =>
-      prev.map((member) => (member.id === id ? { ...member, role: newRole } : member))
+      prev.map((member) => (member.id === id ? { ...member, projectRole: newRole } : member))
     );
   };
 
@@ -639,7 +694,7 @@ function ProjectForm({ onSubmit, teamMembers, initialData, isEditMode = false }:
                       <span className="text-sm font-medium">{member.name}</span>
                     </div>
                     <div className="flex items-center space-x-2">
-                      <Select value={member.role} onValueChange={(value) => handleRoleChange(member.id, value)}>
+                      <Select value={member.projectRole} onValueChange={(value) => handleRoleChange(member.id, value)}>
                         <SelectTrigger className="w-24 h-7">
                           <SelectValue />
                         </SelectTrigger>
@@ -673,7 +728,7 @@ function ProjectForm({ onSubmit, teamMembers, initialData, isEditMode = false }:
                   const isSelected = selectedMembers.some((m) => m.id === member.id);
                   return (
                     <div key={member.id} className="flex items-center space-x-3 p-2 hover:bg-muted rounded-md">
-                      <Checkbox checked={isSelected} onCheckedChange={(checked) => handleMemberToggle(member, checked)} />
+                      <Checkbox checked={isSelected} onCheckedChange={(checked) => handleMemberToggle(member, !!checked)} />
                       <Avatar className="h-8 w-8">
                         <AvatarFallback>{member.shortName}</AvatarFallback>
                       </Avatar>

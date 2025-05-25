@@ -1,6 +1,7 @@
 "use client"
 
-import { useState } from "react"
+import { useEffect, useState } from "react"
+import { useParams } from "next/navigation"
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Badge } from "@/components/ui/badge"
@@ -18,123 +19,142 @@ import { Input } from "@/components/ui/input"
 import { Label } from "@/components/ui/label"
 import { Textarea } from "@/components/ui/textarea"
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select"
-import { CalendarDays, MoreHorizontal, Plus, Users } from "lucide-react"
+import { CalendarDays, MoreHorizontal, Plus, Users, Loader2, AlertCircle } from "lucide-react"
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu"
+import { useProjectStore } from "@/store/projectStore"
+import { Task, ProjectMember, CreateTaskDto, TaskStatus, Priority } from "@/types/project.types"
 
-const initialTasks = {
-  todo: [
-    {
-      id: 1,
-      title: "Design user interface mockups",
-      description: "Create wireframes and high-fidelity mockups for the main dashboard",
-      assignee: { name: "Alice Johnson", avatar: "AJ" },
-      priority: "High",
-      dueDate: "2024-01-25",
-    },
-    {
-      id: 2,
-      title: "Set up development environment",
-      description: "Configure local development setup with all necessary tools",
-      assignee: { name: "Bob Smith", avatar: "BS" },
-      priority: "Medium",
-      dueDate: "2024-01-22",
-    },
-  ],
-  inProgress: [
-    {
-      id: 3,
-      title: "Implement authentication system",
-      description: "Build secure login and registration functionality",
-      assignee: { name: "Carol Davis", avatar: "CD" },
-      priority: "High",
-      dueDate: "2024-01-30",
-    },
-    {
-      id: 4,
-      title: "Database schema design",
-      description: "Design and implement the database structure",
-      assignee: { name: "David Wilson", avatar: "DW" },
-      priority: "Medium",
-      dueDate: "2024-01-28",
-    },
-  ],
-  review: [
-    {
-      id: 5,
-      title: "API documentation",
-      description: "Complete documentation for all API endpoints",
-      assignee: { name: "Eve Brown", avatar: "EB" },
-      priority: "Low",
-      dueDate: "2024-01-26",
-    },
-  ],
-  done: [
-    {
-      id: 6,
-      title: "Project setup and planning",
-      description: "Initial project setup and requirement gathering",
-      assignee: { name: "Frank Miller", avatar: "FM" },
-      priority: "High",
-      dueDate: "2024-01-15",
-    },
-  ],
+interface Column {
+  id: TaskStatus;
+  title: string;
+  color: string;
 }
 
-const columns = [
-  { id: "todo", title: "To Do", color: "bg-gray-100" },
-  { id: "inProgress", title: "In Progress", color: "bg-blue-100" },
-  { id: "review", title: "Review", color: "bg-yellow-100" },
-  { id: "done", title: "Done", color: "bg-green-100" },
-]
-
-const teamMembers = [
-  { name: "Alice Johnson", avatar: "AJ", role: "Designer" },
-  { name: "Bob Smith", avatar: "BS", role: "Developer" },
-  { name: "Carol Davis", avatar: "CD", role: "Developer" },
-  { name: "David Wilson", avatar: "DW", role: "Backend Developer" },
-  { name: "Eve Brown", avatar: "EB", role: "Technical Writer" },
-  { name: "Frank Miller", avatar: "FM", role: "Project Manager" },
+const columns: Column[] = [
+  { id: TaskStatus.TODO, title: "To Do", color: "bg-gray-100" },
+  { id: TaskStatus.IN_PROGRESS, title: "In Progress", color: "bg-blue-100" },
+  { id: TaskStatus.REVIEW, title: "Review", color: "bg-yellow-100" },
+  { id: TaskStatus.DONE, title: "Done", color: "bg-green-100" },
 ]
 
 export default function ProjectDetailPage() {
-  const [tasks, setTasks] = useState(initialTasks)
+  const { id } = useParams()
+  const { projects, loading, error, fetchProjects, fetchProjectDetails } = useProjectStore()
+  const [tasks, setTasks] = useState<Task[]>([])
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false)
-  const [selectedTask, setSelectedTask] = useState(null)
+  const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
+  const [fetchError, setFetchError] = useState<string | null>(null)
+  const [hasFetched, setHasFetched] = useState(false)
 
-  const handleCreateTask = (newTask) => {
-    const taskWithId = { ...newTask, id: Date.now() }
-    setTasks((prev) => ({
-      ...prev,
-      todo: [...prev.todo, taskWithId],
-    }))
-    setIsCreateTaskOpen(false)
+  const project = projects.find((p) => p.id === id) || null
+
+  useEffect(() => {
+    const fetchData = async () => {
+      if (!projects.length && !hasFetched) {
+        setHasFetched(true)
+        await fetchProjects()
+      }
+      if (project && !hasFetched) {
+        setHasFetched(true)
+        try {
+          const response = await fetchProjectDetails(id as string)
+          if (response) {
+            setTasks(response.data.tasks)
+            setFetchError(null)
+          }
+        } catch (err) {
+          setFetchError("Failed to fetch project details")
+          console.error(err)
+        }
+      }
+    }
+    fetchData()
+  }, [id, projects.length, project, fetchProjects, fetchProjectDetails, hasFetched])
+
+  const handleCreateTask = async (newTask: CreateTaskDto) => {
+    const assignee = project?.members.find((m) => m.id === newTask.assigneeId)
+    if (!assignee || !project) {
+      setFetchError("Invalid assignee or project")
+      return
+    }
+    try {
+      await useProjectStore.getState().addTask(project.id, newTask)
+      const response = await fetchProjectDetails(project.id)
+      if (response) {
+        setTasks(response.data.tasks)
+        setFetchError(null)
+      }
+      setIsCreateTaskOpen(false)
+    } catch (err) {
+      setFetchError("Failed to create task")
+      console.error(err)
+    }
   }
 
-  const handleTaskClick = (task) => {
+  const handleTaskClick = (task: Task) => {
     setSelectedTask(task)
     setIsTaskDetailOpen(true)
   }
 
-  const getPriorityColor = (priority) => {
+  const getPriorityColor = (priority: Priority) => {
     switch (priority) {
-      case "High":
+      case Priority.CRITICAL:
+        return "bg-purple-100 text-purple-800"
+      case Priority.HIGH:
         return "bg-red-100 text-red-800"
-      case "Medium":
+      case Priority.MEDIUM:
         return "bg-yellow-100 text-yellow-800"
-      case "Low":
+      case Priority.LOW:
         return "bg-green-100 text-green-800"
       default:
         return "bg-gray-100 text-gray-800"
     }
   }
 
+  const formatDate = (dateString: string | null) => {
+    if (!dateString) return "Not set"
+    return new Date(dateString).toLocaleDateString("en-US", {
+      year: "numeric",
+      month: "long",
+      day: "numeric",
+    })
+  }
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <span className="ml-2">Loading project...</span>
+      </div>
+    )
+  }
+
+  if (error || fetchError || !project) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <AlertCircle className="h-8 w-8 text-red-500" />
+        <span className="ml-2 text-red-600">{error || fetchError || "Project not found"}</span>
+        <Button variant="outline" className="ml-4" onClick={fetchProjects}>
+          Retry
+        </Button>
+      </div>
+    )
+  }
+
+  const groupedTasks: Record<TaskStatus, Task[]> = {
+    [TaskStatus.TODO]: tasks.filter((t) => t.status === TaskStatus.TODO),
+    [TaskStatus.IN_PROGRESS]: tasks.filter((t) => t.status === TaskStatus.IN_PROGRESS),
+    [TaskStatus.REVIEW]: tasks.filter((t) => t.status === TaskStatus.REVIEW),
+    [TaskStatus.DONE]: tasks.filter((t) => t.status === TaskStatus.DONE),
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold tracking-tight">Website Redesign</h1>
-          <p className="text-muted-foreground">Complete overhaul of the company website with modern design</p>
+          <h1 className="text-3xl font-bold tracking-tight">{project.name}</h1>
+          <p className="text-muted-foreground">{project.description}</p>
         </div>
         <div className="flex items-center space-x-2">
           <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
@@ -149,7 +169,7 @@ export default function ProjectDetailPage() {
                 <DialogTitle>Create New Task</DialogTitle>
                 <DialogDescription>Add a new task to your project board.</DialogDescription>
               </DialogHeader>
-              <TaskForm onSubmit={handleCreateTask} teamMembers={teamMembers} />
+              <TaskForm onSubmit={handleCreateTask} teamMembers={project.members} />
             </DialogContent>
           </Dialog>
         </div>
@@ -160,21 +180,21 @@ export default function ProjectDetailPage() {
           <Users className="h-4 w-4 text-muted-foreground" />
           <span className="text-sm text-muted-foreground">Team:</span>
           <div className="flex -space-x-2">
-            {teamMembers.slice(0, 5).map((member, index) => (
+            {project.members.slice(0, 5).map((member, index) => (
               <Avatar key={index} className="h-8 w-8 border-2 border-background">
-                <AvatarFallback>{member.avatar}</AvatarFallback>
+                <AvatarFallback>{member.shortName}</AvatarFallback>
               </Avatar>
             ))}
-            {teamMembers.length > 5 && (
+            {project.totalMembers > 5 && (
               <div className="flex h-8 w-8 items-center justify-center rounded-full border-2 border-background bg-muted text-xs">
-                +{teamMembers.length - 5}
+                +{project.totalMembers - 5}
               </div>
             )}
           </div>
         </div>
         <div className="flex items-center space-x-2">
           <CalendarDays className="h-4 w-4 text-muted-foreground" />
-          <span className="text-sm text-muted-foreground">Due: February 15, 2024</span>
+          <span className="text-sm text-muted-foreground">Due: {formatDate(project.deadline)}</span>
         </div>
       </div>
 
@@ -183,10 +203,10 @@ export default function ProjectDetailPage() {
           <div key={column.id} className="space-y-4">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">{column.title}</h3>
-              <Badge variant="secondary">{tasks[column.id]?.length || 0}</Badge>
+              <Badge variant="secondary">{groupedTasks[column.id].length}</Badge>
             </div>
             <div className="space-y-3">
-              {tasks[column.id]?.map((task) => (
+              {groupedTasks[column.id].map((task) => (
                 <Card
                   key={task.id}
                   className="cursor-pointer hover:shadow-md transition-shadow"
@@ -213,11 +233,11 @@ export default function ProjectDetailPage() {
                     <p className="text-xs text-muted-foreground mb-3 line-clamp-2">{task.description}</p>
                     <div className="flex items-center justify-between">
                       <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-xs">{task.assignee.avatar}</AvatarFallback>
+                        <AvatarFallback className="text-xs">{task.assignee.shortName}</AvatarFallback>
                       </Avatar>
                       <Badge className={`text-xs ${getPriorityColor(task.priority)}`}>{task.priority}</Badge>
                     </div>
-                    <div className="mt-2 text-xs text-muted-foreground">Due: {task.dueDate}</div>
+                    <div className="mt-2 text-xs text-muted-foreground">Due: {formatDate(task.dueDate)}</div>
                   </CardContent>
                 </Card>
               ))}
@@ -244,7 +264,7 @@ export default function ProjectDetailPage() {
                     <Label className="text-sm font-medium">Assignee</Label>
                     <div className="flex items-center space-x-2 mt-1">
                       <Avatar className="h-6 w-6">
-                        <AvatarFallback className="text-xs">{selectedTask.assignee.avatar}</AvatarFallback>
+                        <AvatarFallback className="text-xs">{selectedTask.assignee.shortName}</AvatarFallback>
                       </Avatar>
                       <span className="text-sm">{selectedTask.assignee.name}</span>
                     </div>
@@ -256,7 +276,7 @@ export default function ProjectDetailPage() {
                 </div>
                 <div>
                   <Label className="text-sm font-medium">Due Date</Label>
-                  <p className="text-sm text-muted-foreground mt-1">{selectedTask.dueDate}</p>
+                  <p className="text-sm text-muted-foreground mt-1">{formatDate(selectedTask.dueDate)}</p>
                 </div>
               </div>
               <DialogFooter>
@@ -273,33 +293,23 @@ export default function ProjectDetailPage() {
   )
 }
 
-function TaskForm({ onSubmit, teamMembers }) {
-  const [formData, setFormData] = useState({
+function TaskForm({ onSubmit, teamMembers }: { onSubmit: (task: CreateTaskDto) => void; teamMembers: ProjectMember[] }) {
+  const [formData, setFormData] = useState<CreateTaskDto>({
     title: "",
     description: "",
-    assignee: "",
-    priority: "Medium",
+    assigneeId: "",
+    priority: Priority.MEDIUM,
     dueDate: "",
   })
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
-    const assigneeData = teamMembers.find((member) => member.name === formData.assignee)
-    onSubmit({
-      ...formData,
-      assignee: assigneeData || {
-        name: formData.assignee,
-        avatar: formData.assignee
-          .split(" ")
-          .map((n) => n[0])
-          .join(""),
-      },
-    })
+    onSubmit(formData)
     setFormData({
       title: "",
       description: "",
-      assignee: "",
-      priority: "Medium",
+      assigneeId: "",
+      priority: Priority.MEDIUM,
       dueDate: "",
     })
   }
@@ -328,16 +338,16 @@ function TaskForm({ onSubmit, teamMembers }) {
         <div className="space-y-2">
           <Label htmlFor="assignee">Assignee</Label>
           <Select
-            value={formData.assignee}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, assignee: value }))}
+            value={formData.assigneeId}
+            onValueChange={(value) => setFormData((prev) => ({ ...prev, assigneeId: value }))}
           >
             <SelectTrigger>
               <SelectValue placeholder="Select assignee" />
             </SelectTrigger>
             <SelectContent>
               {teamMembers.map((member) => (
-                <SelectItem key={member.name} value={member.name}>
-                  {member.name} - {member.role}
+                <SelectItem key={member.id} value={member.id}>
+                  {member.name} - {member.projectRole}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -347,15 +357,17 @@ function TaskForm({ onSubmit, teamMembers }) {
           <Label htmlFor="priority">Priority</Label>
           <Select
             value={formData.priority}
-            onValueChange={(value) => setFormData((prev) => ({ ...prev, priority: value }))}
+            onValueChange={(value: Priority.LOW | Priority.MEDIUM | Priority.HIGH) =>
+              setFormData((prev) => ({ ...prev, priority: value }))
+            }
           >
             <SelectTrigger>
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="Low">Low</SelectItem>
-              <SelectItem value="Medium">Medium</SelectItem>
-              <SelectItem value="High">High</SelectItem>
+              <SelectItem value={Priority.LOW}>Low</SelectItem>
+              <SelectItem value={Priority.MEDIUM}>Medium</SelectItem>
+              <SelectItem value={Priority.HIGH}>High</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -365,8 +377,8 @@ function TaskForm({ onSubmit, teamMembers }) {
         <Input
           id="dueDate"
           type="date"
-          value={formData.dueDate}
-          onChange={(e) => setFormData((prev) => ({ ...prev, dueDate: e.target.value }))}
+          value={formData.dueDate || ""}
+          onChange={(e) => setFormData((prev) => ({ ...prev, dueDate: e.target.value || null }))}
           required
         />
       </div>

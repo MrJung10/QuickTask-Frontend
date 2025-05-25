@@ -1,6 +1,6 @@
-import { apiClient } from "@/lib/api/config";
-import { Project, ProjectListResponse, CreateProjectDto } from "@/types/project.types";
-import { AxiosError } from "axios";
+import { apiClient } from "@/lib/api/config"
+import { Project, ProjectListResponse, CreateProjectDto, ProjectDetailResponse, Task, CreateTaskDto } from "@/types/project.types"
+import { AxiosError } from "axios"
 
 class ProjectRepo {
   constructor() {}
@@ -9,13 +9,13 @@ class ProjectRepo {
     onSuccess,
     onError,
   }: {
-    onSuccess: (data: ProjectListResponse) => void;
-    onError: (message: string) => void;
+    onSuccess: (data: ProjectListResponse) => void
+    onError: (message: string) => void
   }) {
     try {
-      const { data } = await apiClient.get<ProjectListResponse>("/project");
-      onSuccess(data);
-      return data;
+      const { data } = await apiClient.get<ProjectListResponse>("/project")
+      onSuccess(data)
+      return data
     } catch (error) {
       const errorMessage = (error as ErrorEvent).message || "Project list retrieval failed";
       onError(errorMessage);
@@ -28,9 +28,9 @@ class ProjectRepo {
     onError: (message: string) => void
   ) {
     try {
-      const { data } = await apiClient.post<{ success: boolean; data: Project }>("/project", payload);
-      onSuccess(data.data);
-      return data.data;
+      const { data } = await apiClient.post<{ success: boolean; data: Project }>("/project", payload)
+      onSuccess(data.data)
+      return data.data
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       onError(err.response?.data?.message || "Failed to create project");
@@ -44,26 +44,53 @@ class ProjectRepo {
     onError: (message: string) => void
   ) {
     try {
-      const { data } = await apiClient.put<{ success: boolean; data: Project }>(`/project/${id}`, payload);
-      onSuccess(data.data);
-      return data.data;
+      const { data } = await apiClient.put<{ success: boolean; data: Project }>(`/project/${id}`, payload)
+      onSuccess(data.data)
+      return data.data
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       onError(err.response?.data?.message || "Failed to update project");
     }
   }
 
-  async deleteProject(
-    id: string,
-    onSuccess: () => void,
-    onError: (message: string) => void
-  ) {
+  async deleteProject(id: string, onSuccess: () => void, onError: (message: string) => void) {
     try {
-      await apiClient.delete(`/project/${id}`);
-      onSuccess();
+      await apiClient.delete(`/project/${id}`)
+      onSuccess()
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       onError(err.response?.data?.message || "Failed to delete project");
+    }
+  }
+
+  async getProjectDetails(
+    id: string,
+    onSuccess: (data: ProjectDetailResponse) => void,
+    onError: (message: string) => void
+  ) {
+    try {
+      const { data } = await apiClient.get<ProjectDetailResponse>(`/project/${id}`)
+      onSuccess(data)
+      return data
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      onError(err.response?.data?.message || "Failed to fetch project details")
+    }
+  }
+
+  async createTask(
+    projectId: string,
+    payload: CreateTaskDto,
+    onSuccess: (data: Task) => void,
+    onError: (message: string) => void
+  ) {
+    try {
+      const { data } = await apiClient.post<{ success: boolean; data: Task }>(`/project/${projectId}/tasks`, payload)
+      onSuccess(data.data)
+      return data.data
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      onError(err.response?.data?.message || "Failed to create task")
     }
   }
 }
