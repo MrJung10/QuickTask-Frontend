@@ -104,6 +104,7 @@ export default function DashboardPage() {
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Project</th>
+                    <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
                     <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Members</th>
                     <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Due Date</th>
                   </tr>
@@ -121,6 +122,9 @@ export default function DashboardPage() {
                             <p className="text-sm text-muted-foreground">{project.description}</p>
                           </div>
                         </div>
+                      </td>
+                      <td className="p-4">
+                        <Badge variant="default">In Progress</Badge>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center space-x-1">

@@ -34,6 +34,7 @@ import { Textarea } from "@/components/ui/textarea"
 import { useUserStore } from "@/store/userStore"
 import { Members } from "@/types/user.types"
 import { toast } from "sonner"
+import { useAuth } from "@/store/auth-store"
 
 // Extend Members with projectRole
 interface ProjectFormMember extends Members {
@@ -97,6 +98,8 @@ export default function ProjectsPage() {
   const [isEditModalOpen, setIsEditModalOpen] = useState(false);
   const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [createError, setCreateError] = useState<string | null>(null);
+
+  const { user } = useAuth();
 
   useEffect(() => {
     fetchProjects();
@@ -286,21 +289,25 @@ export default function ProjectsPage() {
           <h1 className="text-3xl font-bold tracking-tight">Projects</h1>
           <p className="text-muted-foreground">Manage and track all your projects in one place.</p>
         </div>
-        <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
-          <DialogTrigger asChild>
-            <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Project
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
-            <DialogHeader>
-              <DialogTitle>Create New Project</DialogTitle>
-              <DialogDescription>Add a new project to your workspace with team members and roles.</DialogDescription>
-            </DialogHeader>
-            <ProjectForm onSubmit={handleCreateProject} teamMembers={members} />
-          </DialogContent>
-        </Dialog>
+        {user?.role === 'ADMIN' && (
+          <Dialog open={isCreateModalOpen} onOpenChange={setIsCreateModalOpen}>
+            <DialogTrigger asChild>
+              <Button>
+                <Plus className="mr-2 h-4 w-4" />
+                New Project
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[600px] max-h-[80vh] overflow-y-auto">
+              <DialogHeader>
+                <DialogTitle>Create New Project</DialogTitle>
+                <DialogDescription>
+                  Add a new project to your workspace with team members and roles.
+                </DialogDescription>
+              </DialogHeader>
+              <ProjectForm onSubmit={handleCreateProject} teamMembers={members} />
+            </DialogContent>
+          </Dialog>
+        )}
       </div>
 
       {/* Edit Project Modal */}
@@ -377,7 +384,9 @@ export default function ProjectsPage() {
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Team</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Start Date</th>
                   <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Due Date</th>
-                  <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Actions</th>
+                  {user?.role === 'ADMIN' && (
+                    <th className="h-12 px-4 text-left align-middle font-medium text-muted-foreground">Actions</th>
+                  )}
                 </tr>
               </thead>
               <tbody>
@@ -445,34 +454,36 @@ export default function ProjectsPage() {
                           <span className="text-sm text-muted-foreground">---</span>
                         )}
                       </td>
-                      <td className="p-4">
-                        <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
-                            <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                              <MoreHorizontal className="h-4 w-4" />
-                            </Button>
-                          </DropdownMenuTrigger>
-                          <DropdownMenuContent align="end">
-                            <DropdownMenuLabel>Actions</DropdownMenuLabel>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/projects/${project.id}`}>View Project</Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleEditProject(project)}>
-                              Edit Project
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild>
-                              <Link href={`/projects/${project.id}/team`}>Manage Team</Link>
-                            </DropdownMenuItem>
-                            <DropdownMenuSeparator />
-                            <DropdownMenuItem 
-                              className="text-red-600"
-                              onClick={() => handleDeleteProject(project.id)}
-                            >
-                              Delete Project
-                            </DropdownMenuItem>
-                          </DropdownMenuContent>
-                        </DropdownMenu>
-                      </td>
+                      {user?.role === 'ADMIN' && (
+                        <td className="p-4">
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                                <MoreHorizontal className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuLabel>Actions</DropdownMenuLabel>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/projects/${project.id}`}>View Project</Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => handleEditProject(project)}>
+                                Edit Project
+                              </DropdownMenuItem>
+                              <DropdownMenuItem asChild>
+                                <Link href={`/projects/${project.id}/team`}>Manage Team</Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuSeparator />
+                              <DropdownMenuItem 
+                                className="text-red-600"
+                                onClick={() => handleDeleteProject(project.id)}
+                              >
+                                Delete Project
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </td>
+                      )}
                     </tr>
                   );
                 })}
