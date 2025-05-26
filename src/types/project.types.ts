@@ -76,4 +76,5 @@ export interface CreateTaskDto extends Record<string, unknown> {
     priority: Priority.LOW | Priority.MEDIUM | Priority.HIGH;
     dueDate: string | null;
     assigneeId: string;
+    status?: TaskStatus
 }

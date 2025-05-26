@@ -1,6 +1,6 @@
 import { create } from "zustand"
 import { ProjectRepository } from "@/repositories/project.repository"
-import { Project, CreateProjectDto, ProjectDetailResponse, CreateTaskDto, Task } from "@/types/project.types"
+import { Project, CreateProjectDto, ProjectDetailResponse, CreateTaskDto, Task, TaskStatus } from "@/types/project.types"
 
 type ProjectStore = {
   projects: Project[]
@@ -12,8 +12,10 @@ type ProjectStore = {
   deleteProject: (id: string) => Promise<void>
   fetchProjectDetails: (id: string) => Promise<ProjectDetailResponse | null>
   addTask: (projectId: string, payload: CreateTaskDto) => Promise<void>
-  setProjects: (data: Project[]) => void
+  updateTask: (projectId: string, taskId: string, taskData: Partial<CreateTaskDto>) => Promise<void>;
+  deleteTask: (projectId: string, taskId: string) => Promise<void>;
 
+  setProjects: (data: Project[]) => void
   setError: (message: string | null) => void
 }
 
@@ -129,5 +131,64 @@ export const useProjectStore = create<ProjectStore>((set) => ({
         set({ error: msg, loading: false })
       }
     )
+  },
+
+  updateTask: async (projectId: string, taskId: string, taskData: Partial<CreateTaskDto>) => {
+    set({ loading: true });
+    await ProjectRepository.updateTask(
+      projectId,
+      taskId,
+      taskData,
+      (updatedTask: Task) => {
+        set({ loading: false, error: null });
+      },
+      (msg: string) => {
+        set({ error: msg, loading: false });
+      }
+    );
+  },
+
+  updateTask: async (projectId: string, taskId: string, taskData: Partial<CreateTaskDto>) => {
+    set({ loading: true });
+    await ProjectRepository.updateTask(
+      projectId,
+      taskId,
+      taskData,
+      (updatedTask: Task) => {
+        set({ loading: false, error: null });
+      },
+      (msg: string) => {
+        set({ error: msg, loading: false });
+      }
+    );
+  },
+
+  updateTaskStatus: async (projectId: string, taskId: string, status: TaskStatus) => {
+    set({ loading: true });
+    await ProjectRepository.updateTaskStatus(
+      projectId,
+      taskId,
+      status,
+      (updatedTask: Task) => {
+        set({ loading: false, error: null });
+      },
+      (msg: string) => {
+        set({ error: msg, loading: false });
+      }
+    );
+  },
+
+  deleteTask: async (projectId: string, taskId: string) => {
+    set({ loading: true });
+    await ProjectRepository.deleteTask(
+      projectId,
+      taskId,
+      () => {
+        set({ loading: false, error: null });
+      },
+      (msg: string) => {
+        set({ error: msg, loading: false });
+      }
+    );
   },
 }))

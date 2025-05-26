@@ -39,13 +39,15 @@ const columns: Column[] = [
 
 export default function ProjectDetailPage() {
   const { id } = useParams()
-  const { projects, loading, error, fetchProjects, fetchProjectDetails } = useProjectStore()
+  const { projects, loading, error, fetchProjects, fetchProjectDetails, addTask, updateTask, updateTaskStatus, deleteTask } = useProjectStore()
   const [tasks, setTasks] = useState<Task[]>([])
   const [isCreateTaskOpen, setIsCreateTaskOpen] = useState(false)
   const [selectedTask, setSelectedTask] = useState<Task | null>(null)
   const [isTaskDetailOpen, setIsTaskDetailOpen] = useState(false)
+  const [isEditTaskOpen, setIsEditTaskOpen] = useState(false)
   const [fetchError, setFetchError] = useState<string | null>(null)
   const [hasFetched, setHasFetched] = useState(false)
+  const [isUpdating, setIsUpdating] = useState(false)
 
   const project = projects.find((p) => p.id === id) || null
 
@@ -78,8 +80,11 @@ export default function ProjectDetailPage() {
       setFetchError("Invalid assignee or project")
       return
     }
+
+    setIsUpdating(true);
+
     try {
-      await useProjectStore.getState().addTask(project.id, newTask)
+      await addTask(project.id, newTask)
       const response = await fetchProjectDetails(project.id)
       if (response) {
         setTasks(response.data.tasks)
@@ -89,6 +94,8 @@ export default function ProjectDetailPage() {
     } catch (err) {
       setFetchError("Failed to create task")
       console.error(err)
+    } finally {
+      setIsUpdating(false);
     }
   }
 
@@ -96,6 +103,61 @@ export default function ProjectDetailPage() {
     setSelectedTask(task)
     setIsTaskDetailOpen(true)
   }
+
+  const handleEditTask = async (taskData: CreateTaskDto) => {
+    if (!project || !selectedTask) return;
+    setIsUpdating(true);
+    try {
+      await updateTask(project.id, selectedTask.id, taskData);
+      const response = await fetchProjectDetails(project.id);
+      if (response) {
+        setTasks(response.data.tasks);
+        setFetchError(null);
+      }
+      setIsEditTaskOpen(false);
+      setIsTaskDetailOpen(false);
+    } catch (err) {
+      setFetchError('Failed to update task');
+      console.error(err);
+    }
+  };
+
+  const handleMoveTask = async (newStatus: TaskStatus) => {
+    if (!project || !selectedTask) return;
+    setIsUpdating(false);
+    try {
+      await updateTaskStatus(project.id, selectedTask.id, newStatus);
+      const response = await fetchProjectDetails(project.id);
+      if (response) {
+        setTasks(response.data.tasks);
+        setFetchError(null);
+      }
+      setIsTaskDetailOpen(false);
+    } catch (err) {
+      setFetchError('Failed to move task');
+      console.error(err);
+    } finally {
+      setIsUpdating(false);
+    }
+  };
+
+  const handleDeleteTask = async () => {
+    if (!project || !selectedTask) return;
+    try {
+      await deleteTask(project.id, selectedTask.id);
+      const response = await fetchProjectDetails(project.id);
+      if (response) {
+        setTasks(response.data.tasks);
+        setFetchError(null);
+      }
+      setIsTaskDetailOpen(false);
+    } catch (err) {
+      setFetchError('Failed to delete task');
+      console.error(err);
+    }finally {
+      setIsUpdating(false);
+    }
+  };
 
   const getPriorityColor = (priority: Priority) => {
     switch (priority) {
@@ -159,7 +221,7 @@ export default function ProjectDetailPage() {
         <div className="flex items-center space-x-2">
           <Dialog open={isCreateTaskOpen} onOpenChange={setIsCreateTaskOpen}>
             <DialogTrigger asChild>
-              <Button>
+              <Button disabled={isUpdating}>
                 <Plus className="mr-2 h-4 w-4" />
                 Add Task
               </Button>
@@ -222,9 +284,34 @@ export default function ProjectDetailPage() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
-                          <DropdownMenuItem>Edit</DropdownMenuItem>
-                          <DropdownMenuItem>Move</DropdownMenuItem>
-                          <DropdownMenuItem className="text-red-600">Delete</DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTask(task);
+                              setIsEditTaskOpen(true);
+                            }}
+                          >
+                            Edit
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTask(task);
+                              setIsTaskDetailOpen(true);
+                            }}
+                          >
+                            Move
+                          </DropdownMenuItem>
+                          <DropdownMenuItem
+                            className="text-red-600"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setSelectedTask(task);
+                              handleDeleteTask();
+                            }}
+                          >
+                            Delete
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
@@ -246,6 +333,7 @@ export default function ProjectDetailPage() {
         ))}
       </div>
 
+      {/* Task Detail Dialog */}
       <Dialog open={isTaskDetailOpen} onOpenChange={setIsTaskDetailOpen}>
         <DialogContent className="sm:max-w-[600px]">
           {selectedTask && (
@@ -278,14 +366,67 @@ export default function ProjectDetailPage() {
                   <Label className="text-sm font-medium">Due Date</Label>
                   <p className="text-sm text-muted-foreground mt-1">{formatDate(selectedTask.dueDate)}</p>
                 </div>
+                <div>
+                  <Label className="text-sm font-medium">Status</Label>
+                  <Select
+                    value={selectedTask.status}
+                    onValueChange={(value: TaskStatus) => handleMoveTask(value)}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {columns.map((column) => (
+                        <SelectItem key={column.id} value={column.id}>
+                          {column.title}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
               <DialogFooter>
-                <Button variant="outline" onClick={() => setIsTaskDetailOpen(false)}>
+                <Button variant="outline" onClick={() => setIsTaskDetailOpen(false)} disabled={isUpdating}>
                   Close
                 </Button>
-                <Button>Edit Task</Button>
+                <Button
+                  onClick={() => {
+                    setIsEditTaskOpen(true);
+                    setIsTaskDetailOpen(false);
+                  }}
+                  disabled={isUpdating}
+                >
+                  Edit Task
+                </Button>
+                <Button variant="destructive" onClick={handleDeleteTask} disabled={isUpdating}>
+                  {isUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : "Delete Task"}
+                </Button>
               </DialogFooter>
             </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Task Dialog */}
+      <Dialog open={isEditTaskOpen} onOpenChange={setIsEditTaskOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Edit Task</DialogTitle>
+            <DialogDescription>Update the task details.</DialogDescription>
+          </DialogHeader>
+          {selectedTask && (
+            <TaskForm
+              onSubmit={handleEditTask}
+              teamMembers={project?.members || []}
+              initialData={{
+                title: selectedTask.title,
+                description: selectedTask.description,
+                assigneeId: selectedTask.assignee.id,
+                priority: selectedTask.priority,
+                dueDate: selectedTask.dueDate || '',
+                status: selectedTask.status,
+              }}
+            />
           )}
         </DialogContent>
       </Dialog>
@@ -293,25 +434,48 @@ export default function ProjectDetailPage() {
   )
 }
 
-function TaskForm({ onSubmit, teamMembers }: { onSubmit: (task: CreateTaskDto) => void; teamMembers: ProjectMember[] }) {
-  const [formData, setFormData] = useState<CreateTaskDto>({
-    title: "",
-    description: "",
-    assigneeId: "",
-    priority: Priority.MEDIUM,
-    dueDate: "",
-  })
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    onSubmit(formData)
-    setFormData({
+  function TaskForm({ 
+    onSubmit,
+    teamMembers,
+    initialData,
+  }: {
+    onSubmit: (task: CreateTaskDto) => void;
+    teamMembers: ProjectMember[];
+    initialData?: CreateTaskDto;
+  }) {
+    const [formData, setFormData] = useState<CreateTaskDto>(
+      initialData || {
       title: "",
       description: "",
       assigneeId: "",
       priority: Priority.MEDIUM,
       dueDate: "",
-    })
+      status: TaskStatus.TODO
+    },
+  );
+
+  useEffect(() => {
+    if (initialData) {
+      setFormData(initialData);
+    }
+  }, [initialData]);
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!formData.title || !formData.assigneeId || !formData.dueDate) {
+      return;
+    }
+    onSubmit(formData);
+    if (!initialData) {
+      setFormData({
+        title: "",
+        description: "",
+        assigneeId: "",
+        priority: Priority.MEDIUM,
+        dueDate: "",
+        status: TaskStatus.TODO
+      });
+    }
   }
 
   return (
@@ -357,9 +521,7 @@ function TaskForm({ onSubmit, teamMembers }: { onSubmit: (task: CreateTaskDto) =
           <Label htmlFor="priority">Priority</Label>
           <Select
             value={formData.priority}
-            onValueChange={(value: Priority.LOW | Priority.MEDIUM | Priority.HIGH) =>
-              setFormData((prev) => ({ ...prev, priority: value }))
-            }
+            onValueChange={(value: Priority) => setFormData((prev) => ({ ...prev, priority: value }))}
           >
             <SelectTrigger>
               <SelectValue />
@@ -368,6 +530,7 @@ function TaskForm({ onSubmit, teamMembers }: { onSubmit: (task: CreateTaskDto) =
               <SelectItem value={Priority.LOW}>Low</SelectItem>
               <SelectItem value={Priority.MEDIUM}>Medium</SelectItem>
               <SelectItem value={Priority.HIGH}>High</SelectItem>
+              <SelectItem value={Priority.CRITICAL}>Critical</SelectItem>
             </SelectContent>
           </Select>
         </div>
@@ -377,13 +540,13 @@ function TaskForm({ onSubmit, teamMembers }: { onSubmit: (task: CreateTaskDto) =
         <Input
           id="dueDate"
           type="date"
-          value={formData.dueDate || ""}
+          value={formData.dueDate || ''}
           onChange={(e) => setFormData((prev) => ({ ...prev, dueDate: e.target.value || null }))}
           required
         />
       </div>
       <DialogFooter>
-        <Button type="submit">Create Task</Button>
+        <Button type="submit">{initialData ? 'Update Task' : 'Create Task'}</Button>
       </DialogFooter>
     </form>
   )

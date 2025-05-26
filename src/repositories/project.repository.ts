@@ -1,5 +1,5 @@
 import { apiClient } from "@/lib/api/config"
-import { Project, ProjectListResponse, CreateProjectDto, ProjectDetailResponse, Task, CreateTaskDto } from "@/types/project.types"
+import { Project, ProjectListResponse, CreateProjectDto, ProjectDetailResponse, Task, CreateTaskDto, TaskStatus } from "@/types/project.types"
 import { AxiosError } from "axios"
 
 class ProjectRepo {
@@ -91,6 +91,55 @@ class ProjectRepo {
     } catch (error) {
       const err = error as AxiosError<{ message?: string }>;
       onError(err.response?.data?.message || "Failed to create task")
+    }
+  }
+
+  async updateTask(
+    projectId: string,
+    taskId: string,
+    payload: Partial<CreateTaskDto>,
+    onSuccess: (data: Task) => void,
+    onError: (message: string) => void
+  ) {
+    try {
+      const { data } = await apiClient.put<{ success: boolean; data: Task }>(`/projects/${projectId}/tasks/${taskId}`, payload);
+      onSuccess(data.data);
+      return data.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      onError(err.response?.data?.message || "Failed to update task");
+    }
+  }
+
+  async updateTaskStatus(
+    projectId: string,
+    taskId: string,
+    status: TaskStatus,
+    onSuccess: (data: Task) => void,
+    onError: (message: string) => void
+  ) {
+    try {
+      const { data } = await apiClient.patch<{ success: boolean; data: Task }>(`/projects/${projectId}/tasks/${taskId}/status`, { status });
+      onSuccess(data.data);
+      return data.data;
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      onError(err.response?.data?.message || "Failed to update task status");
+    }
+  }
+
+  async deleteTask(
+    projectId: string,
+    taskId: string,
+    onSuccess: () => void,
+    onError: (message: string) => void
+  ) {
+    try {
+      await apiClient.delete(`/projects/${projectId}/tasks/${taskId}`);
+      onSuccess();
+    } catch (error) {
+      const err = error as AxiosError<{ message?: string }>;
+      onError(err.response?.data?.message || "Failed to delete task");
     }
   }
 }
