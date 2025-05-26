@@ -13,6 +13,7 @@ type ProjectStore = {
   fetchProjectDetails: (id: string) => Promise<ProjectDetailResponse | null>
   addTask: (projectId: string, payload: CreateTaskDto) => Promise<void>
   updateTask: (projectId: string, taskId: string, taskData: Partial<CreateTaskDto>) => Promise<void>;
+  updateTaskStatus: (projectId: string, taskId: string, status: TaskStatus) => Promise<void>;
   deleteTask: (projectId: string, taskId: string) => Promise<void>;
 
   setProjects: (data: Project[]) => void
@@ -139,22 +140,7 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       projectId,
       taskId,
       taskData,
-      (updatedTask: Task) => {
-        set({ loading: false, error: null });
-      },
-      (msg: string) => {
-        set({ error: msg, loading: false });
-      }
-    );
-  },
-
-  updateTask: async (projectId: string, taskId: string, taskData: Partial<CreateTaskDto>) => {
-    set({ loading: true });
-    await ProjectRepository.updateTask(
-      projectId,
-      taskId,
-      taskData,
-      (updatedTask: Task) => {
+      () => {
         set({ loading: false, error: null });
       },
       (msg: string) => {
@@ -169,7 +155,7 @@ export const useProjectStore = create<ProjectStore>((set) => ({
       projectId,
       taskId,
       status,
-      (updatedTask: Task) => {
+      () => {
         set({ loading: false, error: null });
       },
       (msg: string) => {

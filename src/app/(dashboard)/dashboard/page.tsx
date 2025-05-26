@@ -46,7 +46,7 @@ export default function DashboardPage() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">Dashboard</h1>
-          <p className="text-muted-foreground">Welcome back! Here's what's happening with your projects.</p>
+          <p className="text-muted-foreground">Welcome back! Here&apos;s what&apos;s happening with your projects.</p>
         </div>
       </div>
 
@@ -58,7 +58,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.ongoingProjectCount}</div>
-            <p className="text-xs text-muted-foreground">+2 from last month</p>
           </CardContent>
         </Card>
         <Card>
@@ -68,7 +67,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.activeTaskCount}</div>
-            <p className="text-xs text-muted-foreground">+12% from last week</p>
           </CardContent>
         </Card>
         <Card>
@@ -78,7 +76,6 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{stats.totalTeamMembers}</div>
-            <p className="text-xs text-muted-foreground">+3 new this month</p>
           </CardContent>
         </Card>
         <Card>
@@ -107,7 +104,6 @@ export default function DashboardPage() {
                 <thead>
                   <tr className="border-b bg-muted/50">
                     <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Project</th>
-                    <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Status</th>
                     <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Members</th>
                     <th className="h-10 px-4 text-left align-middle font-medium text-muted-foreground">Due Date</th>
                   </tr>
@@ -122,12 +118,9 @@ export default function DashboardPage() {
                             <Link href={`/projects/${project.id}`} className="font-medium hover:underline">
                               {project.name}
                             </Link>
-                            <p className="text-sm text-muted-foreground">No description available</p>
+                            <p className="text-sm text-muted-foreground">{project.description}</p>
                           </div>
                         </div>
-                      </td>
-                      <td className="p-4">
-                        <Badge variant="default">In Progress</Badge>
                       </td>
                       <td className="p-4">
                         <div className="flex items-center space-x-1">

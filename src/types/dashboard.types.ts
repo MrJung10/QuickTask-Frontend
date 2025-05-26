@@ -7,6 +7,7 @@
   export interface OngoingProject {
     id: string;
     name: string;
+    description: string;
     deadline: string;
     memberCount: number;
   }

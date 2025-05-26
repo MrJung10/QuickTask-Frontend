@@ -73,7 +73,7 @@ export interface CreateProjectDto extends Record<string, unknown> {
 export interface CreateTaskDto extends Record<string, unknown> {
     title: string;
     description: string;
-    priority: Priority.LOW | Priority.MEDIUM | Priority.HIGH;
+    priority: Priority;
     dueDate: string | null;
     assigneeId: string;
     status?: TaskStatus
