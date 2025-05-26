@@ -1,9 +1,11 @@
 import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
-import { User, LoginPayload, RegisterPayload } from '@/types/auth.types';
+import { User, LoginPayload, RegisterPayload, LoginResponse, RegisterResponse } from '@/types/auth.types';
 import { AuthRepository } from '@/repositories/auth.repository';
 import { clearAuthCookies } from '@/lib/utils/cookies';
 import Cookies from "js-cookie";
+import { toast } from 'sonner';
+
 interface AuthState {
   // State
   user: User | null;
@@ -57,7 +59,7 @@ export const useAuthStore = create<AuthState>()(
         try {
           await AuthRepository.login({
             ...payload,
-            onSuccess: (response) => {
+            onSuccess: (response: LoginResponse) => {
               const { accessToken, refreshToken, userDetails } = response.data;
 
               setAuthCookies(accessToken, refreshToken, userDetails);
@@ -70,8 +72,10 @@ export const useAuthStore = create<AuthState>()(
                 isLoading: false,
                 error: null,
               });
+
+              toast.success(response.message || 'Login successful');
             },
-            onError: (message) => {
+            onError: (message: string) => {
               set({
                 error: message,
                 isLoading: false,
@@ -80,11 +84,16 @@ export const useAuthStore = create<AuthState>()(
                 accessToken: null,
                 refreshToken: null,
               });
+
+              toast.error(message || 'Login failed. Please try again.');
             },
           });
         } catch (error) {
-          // Error already handled in onError callback
+          // Avoid duplicate toats; onError already handled the error
           console.error('Login error:', error);
+          if (!useAuthStore.getStore().error) {
+            toast.error('An unexpected error occurred. Please try again.');
+          }
         }
       },
 
@@ -95,26 +104,29 @@ export const useAuthStore = create<AuthState>()(
         try {
           await AuthRepository.register({
             ...payload,
-            onSuccess: (response) => {
-                // After successful registration, you might want to automatically log them in
-                // or just show success message and redirect to login
+            onSuccess: (response: RegisterResponse) => {
                 set({
                     isLoading: false,
                     error: null,
-                    // Optionally set user data if your API returns it after registration
                     user: response.data,
                 });
+
+                toast.success(response.message || 'Registration successful. Please login.');
             },
-            onError: (message) => {
+            onError: (message: string) => {
                 set({
                     error: message,
                     isLoading: false,
                 });
+
+                toast.error(message || 'Registration failed. Please try again.');
             },
           });
         } catch (error) {
-            // Error already handled in onError callback
+          if (!useAuthStore.getStore().error) {
             console.error('Registration error:', error);
+            toast.error('An unexpected error occurred during registration. Please try again.');
+          }
         }
       },
 
@@ -133,6 +145,8 @@ export const useAuthStore = create<AuthState>()(
                 isLoading: false,
                 error: null,
               });
+
+              toast.success('Logged out successfully.');
             },
             // onError callback
             (message) => {
@@ -140,11 +154,15 @@ export const useAuthStore = create<AuthState>()(
                 error: message,
                 isLoading: false,
               });
+
+              toast.error(message || 'Logout failed. Please try again.');
             }
           );
         } catch (error) {
-          // optional fallback
-          console.error("Logout error:", error);
+          if (!useAuthStore.getStore().error) {
+            console.error("Logout error:", error);
+            toast.error('An unexpected error occurred during logout. Please try again.');
+          }
         }
       },
 
@@ -182,7 +200,7 @@ export const useAuthStore = create<AuthState>()(
 );
 
 function setAuthCookies(accessToken: string, refreshToken: string, userDetails?: User): void {
-  Cookies.set('accessToken', accessToken, { expires: 0.0104, sameSite: "Lax" }); // 1 day expiry
+  Cookies.set('accessToken', accessToken, { expires: 1, sameSite: "Lax" }); // 1 day expiry
   Cookies.set('refreshToken', refreshToken, { expires: 7, sameSite: "Lax" }); // 7 days expiry
   if (userDetails) {
     Cookies.set('userDetails', JSON.stringify(userDetails), { expires: 1 });

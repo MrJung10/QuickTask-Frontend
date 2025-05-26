@@ -24,7 +24,7 @@ import { toast } from "sonner"
 export default function LoginPage() {
   const router = useRouter()
 
-  const { isLoading, isAuthenticated } = useAuth()
+  const { isLoading, isAuthenticated, error } = useAuth()
   const { login, clearError } = useAuthActions()
 
   const {
@@ -37,11 +37,8 @@ export default function LoginPage() {
 
   // Redirect if already authenticated
   useEffect(() => {
-    console.log("isAuthenticated", isAuthenticated)
     if (isAuthenticated) {
-      console.log("Redirecting to dashboard")
       router.push("/dashboard")
-      toast("Login successfully.")
     }
   }, [isAuthenticated, router])
 
@@ -51,13 +48,7 @@ export default function LoginPage() {
   }, [clearError])
 
   const onSubmit = async (data: LoginSchema) => {
-    try {
-      await login(data)
-      router.push("/dashboard")
-    } catch (err) {
-      // Error toast will be already handled by the auth store callback
-      console.error("Login failed:", err)
-    }
+    await login(data)
   }
 
   return (
@@ -82,7 +73,7 @@ export default function LoginPage() {
                 )}
               </div>
               <Input 
-                id="email" 
+                id="error" 
                 type="email" 
                 {...register("email")} 
                 placeholder="Enter your email"
@@ -115,6 +106,7 @@ export default function LoginPage() {
               {isLoading ? (
                 <>
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                  <span>Loading...</span>
                 </>
               ) : (
                 "Sign in"
