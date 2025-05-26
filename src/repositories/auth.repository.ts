@@ -23,7 +23,7 @@ class AuthRepo {
       const error = err as AxiosError<{ message?: string }>;
       const errorMessage = error.response?.data?.message || error.message || "Login failed";
       onError(errorMessage);
-      throw err;
+      return null;
     }
   }
 
@@ -49,22 +49,19 @@ class AuthRepo {
       const error = err as AxiosError<{ message?: string }>;
       const errorMessage = error.response?.data?.message || error.message || "Registration failed";
       onError(errorMessage);
-      throw err;
+      return null;
     }
   }
 
   async logout(onSuccess: () => void, onError: (message: string) => void) {
     try {
-      // const token = Cookies.get("accessToken");
-      // console.log('token', token);
-
       await apiClient.post("/auth/logout", {});
       onSuccess();
     } catch (err) {
       const error = err as AxiosError<{ message?: string }>;
       const errorMessage = error.response?.data?.message || error.message || "Logout failed";
       onError(errorMessage);
-      throw err;
+      return null;
     }
   }
 }

@@ -19,12 +19,11 @@ import {
 } from "@/components/ui/card"
 import { AlertCircle, Loader2 } from "lucide-react"
 import { useAuth, useAuthActions } from "@/store/auth-store"
-import { toast } from "sonner"
 
 export default function LoginPage() {
   const router = useRouter()
 
-  const { isLoading, isAuthenticated, error } = useAuth()
+  const { isLoading, isAuthenticated } = useAuth()
   const { login, clearError } = useAuthActions()
 
   const {

@@ -89,9 +89,9 @@ export const useAuthStore = create<AuthState>()(
             },
           });
         } catch (error) {
-          // Avoid duplicate toats; onError already handled the error
+          // Avoid duplicate toasts; onError already handled the error
           console.error('Login error:', error);
-          if (!useAuthStore.getStore().error) {
+          if (!useAuthStore.getState().error) {
             toast.error('An unexpected error occurred. Please try again.');
           }
         }
@@ -123,7 +123,7 @@ export const useAuthStore = create<AuthState>()(
             },
           });
         } catch (error) {
-          if (!useAuthStore.getStore().error) {
+          if (!useAuthStore.getState().error) {
             console.error('Registration error:', error);
             toast.error('An unexpected error occurred during registration. Please try again.');
           }
@@ -159,7 +159,7 @@ export const useAuthStore = create<AuthState>()(
             }
           );
         } catch (error) {
-          if (!useAuthStore.getStore().error) {
+          if (!useAuthStore.getState().error) {
             console.error("Logout error:", error);
             toast.error('An unexpected error occurred during logout. Please try again.');
           }
