@@ -119,6 +119,8 @@ export default function ProjectDetailPage() {
     } catch (err) {
       setFetchError('Failed to update task');
       console.error(err);
+    } finally {
+      setIsUpdating(false);
     }
   };
 
