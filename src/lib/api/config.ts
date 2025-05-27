@@ -6,7 +6,7 @@ const noAuthRoutes = ['/auth/login', '/auth/register'];
 
 const axiosInstance: AxiosInstance = axios.create({
     baseURL: process.env.NEXT_PUBLIC_API_BASE_URL + "/api",
-    timeout: 10000,
+    timeout: 60000,
     headers: {
         'Content-Type': 'application/json',
     },
