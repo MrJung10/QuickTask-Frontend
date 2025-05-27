@@ -393,6 +393,7 @@ export default function ProjectDetailPage() {
                 </Button>
                 <Button
                   onClick={() => {
+                    console.log(selectedTask, "selectedTask");
                     setIsEditTaskOpen(true);
                     setIsTaskDetailOpen(false);
                   }}
@@ -458,7 +459,13 @@ export default function ProjectDetailPage() {
 
   useEffect(() => {
     if (initialData) {
-      setFormData(initialData);
+      console.log('initial Data; initialData');
+      setFormData({
+        ...initialData,
+        dueDate: initialData.dueDate
+          ? new Date(initialData.dueDate).toISOString().split("T")[0]
+          : "",
+      });
     }
   }, [initialData]);
 
